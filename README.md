@@ -43,7 +43,7 @@ Articles are filed under niches; episodes carry a series slug (the series list i
 
 The Vault is a catalog only: prices are integer US cents, there is no cart, checkout, Stripe or orders yet. The five categories are a static seeded table. Newsletter sign-ups and contact messages are stored, not emailed.
 
-Rate limits: 120 requests/minute per IP overall, 10/minute on /auth/login, 5/minute on the public form posts. Set TRUST_PROXY=true behind nginx so the real client IP is used. /docs is hidden in production unless SWAGGER_ENABLED=true.
+Rate limits: 120 requests/minute per IP overall, 10/minute on /auth/login, 5/minute on the public form posts. Set TRUST_PROXY=true behind nginx or Vercel so the real client IP is used. /docs is hidden in production unless SWAGGER_ENABLED=true.
 
 Send Authorization: Bearer <accessToken>. Every route needs a token unless marked @Public(); narrow by role with @Roles(Role.Admin).
 
@@ -52,3 +52,16 @@ Send Authorization: Bearer <accessToken>. Every route needs a token unless marke
 - Turn `DB_SYNCHRONIZE` off and switch to TypeORM migrations.
 - Add rate limiting on `/auth/login`.
 - Daily Postgres backups; keep the DB port closed to the internet.
+
+## Deploying to Vercel
+
+NestJS deploys with zero config (entrypoint `src/main.ts`). Set these env vars on the Vercel project:
+
+- `DATABASE_URL`: the Supabase **transaction pooler** URL (port 6543, IPv4); the direct `db.*.supabase.co:5432` host is IPv6-only and will not connect from Vercel.
+- `DB_SSL=true`, `DB_SYNCHRONIZE=false`, `DB_POOL_MAX=1`, `TRUST_PROXY=true`
+- `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` (new values, not the dev ones), `JWT_ACCESS_TTL`, `JWT_REFRESH_TTL`
+- `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD` (used once, when the users table is empty)
+- `CORS_ORIGINS`: the admin and website URLs, comma-separated, no trailing slash
+- `SWAGGER_ENABLED=true` only if `/docs` should be public
+
+Use a separate Supabase project for production if you can. Rate limits are counted per serverless instance, so they are looser than they look. Schema changes need migrations once `DB_SYNCHRONIZE` is off.

@@ -22,6 +22,8 @@ import { VaultModule } from './vault/vault.module.js';
         autoLoadEntities: true,
         ssl: config.get('DB_SSL') === 'true' ? { rejectUnauthorized: false } : false,
         synchronize: config.get('DB_SYNCHRONIZE') === 'true',
+        // Serverless (Vercel) opens a pool per instance, so keep it at 1 there.
+        poolSize: Number(config.get('DB_POOL_MAX', 10)),
       }),
     }),
     // A loose limit for everything; login and the public forms set tighter ones with @Throttle.
