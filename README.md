@@ -30,8 +30,12 @@ Only staff sign in (roles: admin, editor). Roles live in the static roles table;
 | CRUD | /admin/niches, /admin/articles, /admin/episodes | any staff |
 | POST | /admin/articles/:id/publish, /unpublish; same for /admin/episodes | any staff |
 | GET | /public/niches, /public/articles[/:slug], /public/episodes[/:slug] | public, published only |
-| CRUD + POST /:id/publish, /unpublish | /admin/vault/products (GET /admin/vault/categories is read-only) | admin only |
-| GET | /public/vault/categories, /public/vault/products[?category=&featured=&popular=], /public/vault/products/:slug | public, published only |
+| GET, POST, PATCH /:id, DELETE /:id, PUT /reorder | /admin/vault/categories (the tree: 5 official categories + their sub-groups) | admin only |
+| CRUD + POST /:id/publish, /unpublish | /admin/vault/products (cover, gallery, sections, private file fields) | admin only |
+| POST | /admin/uploads/presign (short-lived upload URL; 503 until STORAGE_* is set) | admin only |
+| CRUD + POST /:id/publish, /unpublish | /admin/pages (privacy, terms and other site pages; nothing is seeded) | admin only |
+| GET | /public/vault/categories (tree with sub-groups and published counts), /public/vault/products[?category=&featured=&popular=] (a top-level slug includes its sub-groups), /public/vault/products/:slug | public, published only |
+| GET | /public/pages (slug + title for the footer), /public/pages/:slug | public, published only |
 | CRUD | /admin/free-resources | any staff |
 | GET, PATCH, DELETE | /admin/newsletter (+ GET /admin/newsletter/export.csv) | admin only |
 | GET, PATCH, DELETE | /admin/contact-messages | admin only |
@@ -65,3 +69,12 @@ NestJS deploys with zero config (entrypoint `src/main.ts`). Set these env vars o
 - `SWAGGER_ENABLED=true` only if `/docs` should be public
 
 Use a separate Supabase project for production if you can. Rate limits are counted per serverless instance, so they are looser than they look. Schema changes need migrations once `DB_SYNCHRONIZE` is off.
+
+## Vault groups, product pages, files and site pages
+
+- **Groups:** the five official categories are fixed top-level groups (seeded; never deletable, renamable or movable; only their description can be edited). Admins add, rename, reorder, move and delete **sub-groups** under them, one level deep. A product's `categoryId` can be a category or a sub-group. Deleting a sub-group that still has products is refused (409).
+- **Product pages:** a product has `coverImageUrl`, `galleryImages` and an ordered `sections` list (`text`, `bullets`, `faq`, `image`). The website draws them in a fixed theme; the admin only chooses content and order.
+- **Files:** uploads go straight to an S3-compatible bucket (Cloudflare R2 / S3) with a presigned URL from `POST /admin/uploads/presign`. Images (png, jpeg, webp, gif, up to 5 MB) go under `public/` and come back with a `publicUrl`. Product files (pdf, zip, epub, office, csv, audio, mp4; up to 1000 MB) go under `private/` and are never public: the `fileKey` appears only in admin responses, and nothing serves the file until checkout exists.
+- **Site pages:** `/admin/pages` holds privacy, terms and similar pages as plain text (blank line between paragraphs, `## ` starts a heading). No page is seeded.
+- **Env vars:** `STORAGE_ENDPOINT`, `STORAGE_BUCKET`, `STORAGE_ACCESS_KEY_ID`, `STORAGE_SECRET_ACCESS_KEY`, `STORAGE_REGION` (default `auto`), `STORAGE_PUBLIC_BASE_URL` (public address of the bucket's `public/` files, needed for images). If they are missing the API still starts and the upload endpoint answers 503.
+- **Roles:** Vault, uploads and pages endpoints are admin-only, so editors cannot use them.

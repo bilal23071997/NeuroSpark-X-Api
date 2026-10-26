@@ -22,12 +22,16 @@ Sibling repos (each has its own `CLAUDE.md`):
 - Podcast series are **not** an API entity: the series list is hardcoded on the website and in the admin. Episodes just carry a `series` slug.
 - Episodes are YouTube links (no audio/video hosting) and cannot be published without one.
 - Money is stored as integer cents (`priceCents`, `salePriceCents`).
-- **Not built yet, don't add without being asked:** cart, checkout, Stripe, orders, file storage / secure downloads, email sending (newsletter/contact are stored only), email verification, forgot-password. No payment account exists yet.
+- **The five official Vault categories are fixed top-level groups** (seeded; cannot be deleted, renamed or moved; only their description is editable). Admins manage **sub-groups** under them, one level deep, and deleting a sub-group with products is refused.
+- **Files:** S3-compatible storage (R2/S3) with presigned PUT uploads. Images live under `public/` (public URL stored on the product); product files live under `private/` and their key is admin-only, never in a public response. There is no download endpoint until checkout exists.
+- Product pages are a fixed theme plus an ordered `sections` list (`text`, `bullets`, `faq`, `image`); no free-form page builder.
+- Site pages (`pages`: privacy, terms, ...) are admin-managed plain text and **seeded empty**: never invent legal text.
+- **Not built yet, don't add without being asked:** cart, checkout, Stripe, orders, secure paid downloads, email sending (newsletter/contact are stored only), email verification, forgot-password. No payment account exists yet.
 - Never create fake products, prices, reviews, download links or payment confirmations.
 
 ## Layout
 
-`src/` modules: `auth` (login/refresh/logout/me/password), `users` (+ first-admin seed), `roles`, `content` (niches, articles, episodes + `/public/*`), `vault` (5 fixed categories, products), `engagement` (free resources, newsletter, contact), `settings` (4 fixed keys), `health`, `common` (decorators, role enum, hash helper).
+`src/` modules: `auth` (login/refresh/logout/me/password), `users` (+ first-admin seed), `roles`, `content` (niches, articles, episodes + `/public/*`), `vault` (5 official categories + sub-groups, products with sections/images/private file), `storage` (presigned uploads), `pages` (site pages), `engagement` (free resources, newsletter, contact), `settings` (4 fixed keys), `health`, `common` (decorators, role enum, hash helper).
 
 Conventions to follow when adding a module:
 - ESM: relative imports end in `.js`.
@@ -37,6 +41,8 @@ Conventions to follow when adding a module:
 - TypeORM here rejects `undefined` in `where`: only include filters that were given.
 - Slugs: lowercase letters, numbers, single hyphens; use `assertSlugFree`/`slugify` from `content/helpers.ts`.
 - Publishing pattern: `draft`/`published`, `publishedAt` set the first time, one featured item at a time (set inside a transaction).
+- Vault, uploads and pages admin endpoints are admin-only (`@Roles(Role.Admin)`): editors are blocked from them.
+- `npm test` runs vitest unit tests (storage presigning with a mocked presigner, product sections, category rules with mocked repositories). A live upload could not be tested because no bucket exists yet.
 - Rate limits are on (`@nestjs/throttler`): 10/min on login, 5/min on public form posts. `/docs` is hidden in production unless `SWAGGER_ENABLED=true`.
 
 ## Running it

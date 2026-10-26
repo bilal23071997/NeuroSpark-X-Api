@@ -29,32 +29,25 @@ import { Role } from '../common/role.enum.js';
 import { PublishStatus } from '../content/publish-status.enum.js';
 import { Product } from './product.entity.js';
 import { ProductsService } from './products.service.js';
-import { VaultCategoriesService } from './vault-categories.service.js';
-import { VaultCategory } from './vault-category.entity.js';
 import { CreateProductDto, UpdateProductDto } from './vault.dto.js';
 
 @ApiTags('Admin - The Vault')
 @ApiBearerAuth('access-token')
 @ApiForbiddenResponse({ description: 'Admin role required' })
-@Controller('admin/vault')
+@Controller('admin/vault/products')
 @Roles(Role.Admin)
 export class AdminVaultController {
-  constructor(
-    private readonly products: ProductsService,
-    private readonly categories: VaultCategoriesService,
-  ) {}
+  constructor(private readonly products: ProductsService) {}
 
-  @Get('categories')
-  @ApiOperation({ summary: 'The five fixed Vault categories (read-only, for dropdowns)' })
-  @ApiOkResponse({ type: [VaultCategory] })
-  findCategories() {
-    return this.categories.findAll();
-  }
-
-  @Get('products')
+  @Get()
   @ApiOperation({ summary: 'List products (drafts and published), newest first' })
   @ApiQuery({ name: 'status', enum: PublishStatus, required: false })
-  @ApiQuery({ name: 'categoryId', required: false, type: Number })
+  @ApiQuery({
+    name: 'categoryId',
+    required: false,
+    type: Number,
+    description: 'A group id; an official category also matches its sub-groups',
+  })
   @ApiOkResponse({ type: [Product] })
   findAll(
     @Query('status', new ParseEnumPipe(PublishStatus, { optional: true })) status?: PublishStatus,
@@ -63,7 +56,7 @@ export class AdminVaultController {
     return this.products.findAll({ status, categoryId });
   }
 
-  @Get('products/:id')
+  @Get(':id')
   @ApiOperation({ summary: 'One product' })
   @ApiOkResponse({ type: Product })
   @ApiNotFoundResponse()
@@ -71,7 +64,7 @@ export class AdminVaultController {
     return this.products.get(id);
   }
 
-  @Post('products')
+  @Post()
   @ApiOperation({ summary: 'Create a product (starts as a draft)' })
   @ApiCreatedResponse({ type: Product })
   @ApiConflictResponse({ description: 'Slug already in use' })
@@ -79,15 +72,19 @@ export class AdminVaultController {
     return this.products.create(dto);
   }
 
-  @Patch('products/:id')
-  @ApiOperation({ summary: 'Edit a product' })
+  @Patch(':id')
+  @ApiOperation({
+    summary: 'Edit a product',
+    description:
+      'Send only the fields to change. `sections` and `galleryImages` replace the whole list. Send null to clear coverImageUrl, salePriceCents, destination, symbol or the file fields.',
+  })
   @ApiOkResponse({ type: Product })
   @ApiNotFoundResponse()
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateProductDto) {
     return this.products.update(id, dto);
   }
 
-  @Post('products/:id/publish')
+  @Post(':id/publish')
   @HttpCode(200)
   @ApiOperation({ summary: 'Publish a product (sets its publish date the first time)' })
   @ApiOkResponse({ type: Product })
@@ -95,7 +92,7 @@ export class AdminVaultController {
     return this.products.publish(id);
   }
 
-  @Post('products/:id/unpublish')
+  @Post(':id/unpublish')
   @HttpCode(200)
   @ApiOperation({ summary: 'Take a product back to draft' })
   @ApiOkResponse({ type: Product })
@@ -103,7 +100,7 @@ export class AdminVaultController {
     return this.products.unpublish(id);
   }
 
-  @Delete('products/:id')
+  @Delete(':id')
   @HttpCode(204)
   @ApiOperation({ summary: 'Delete a product' })
   @ApiNoContentResponse()

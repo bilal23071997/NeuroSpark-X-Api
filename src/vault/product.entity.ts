@@ -8,6 +8,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { PublishStatus } from '../content/publish-status.enum.js';
+import type { ProductSection } from './sections.js';
 import { VaultCategory } from './vault-category.entity.js';
 
 /** A digital product in The Vault. Catalog only: there is no cart, checkout or order yet. */
@@ -60,6 +61,34 @@ export class Product {
   @Column({ type: 'varchar', nullable: true })
   symbol: string | null;
 
+  /** Public https URL of the cover image (uploaded as kind `image`). */
+  @Column({ type: 'varchar', nullable: true })
+  coverImageUrl: string | null;
+
+  /** Public https image URLs, in display order. */
+  @Column({ type: 'jsonb', default: () => "'[]'" })
+  galleryImages: string[];
+
+  /** The page blocks below the summary, in display order. */
+  @Column({ type: 'jsonb', default: () => "'[]'" })
+  sections: ProductSection[];
+
+  /**
+   * Object key of the paid file in the PRIVATE part of the bucket. Admin-only:
+   * it is never returned by any public endpoint, and nothing serves the file
+   * until checkout exists.
+   */
+  @Column({ type: 'varchar', nullable: true })
+  fileKey: string | null;
+
+  /** Original name of the paid file, e.g. "starter-guide.pdf". */
+  @Column({ type: 'varchar', nullable: true })
+  fileName: string | null;
+
+  @Column({ type: 'int', nullable: true })
+  fileSizeBytes: number | null;
+
+  /** The group the product sits in: one of the five official categories or a sub-group. */
   @ManyToOne(() => VaultCategory, { nullable: false, onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'categoryId' })
   category: VaultCategory;

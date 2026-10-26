@@ -26,16 +26,22 @@ export class PublicVaultController {
   ) {}
 
   @Get('categories')
-  @ApiOperation({ summary: 'The five categories, in their official order' })
+  @ApiOperation({
+    summary: 'The five categories in their official order, each with its sub-groups',
+    description: '`productCount` counts published products, so empty sub-groups can be hidden.',
+  })
   @ApiOkResponse({ type: [PublicVaultCategoryDto] })
-  async findCategories(): Promise<PublicVaultCategoryDto[]> {
-    const categories = await this.categories.findAll();
-    return categories.map(({ slug, name, description }) => ({ slug, name, description }));
+  findCategories() {
+    return this.categories.publicTree();
   }
 
   @Get('products')
   @ApiOperation({ summary: 'Published products, newest first' })
-  @ApiQuery({ name: 'category', required: false, description: 'Category slug' })
+  @ApiQuery({
+    name: 'category',
+    required: false,
+    description: 'A group slug. An official category also returns its sub-groups’ products.',
+  })
   @ApiQuery({ name: 'featured', required: false, type: Boolean })
   @ApiQuery({ name: 'popular', required: false, type: Boolean })
   @ApiOkResponse({ type: [PublicProductSummaryDto] })
@@ -48,7 +54,7 @@ export class PublicVaultController {
   }
 
   @Get('products/:slug')
-  @ApiOperation({ summary: 'One published product, with its full description' })
+  @ApiOperation({ summary: 'One published product, with its sections and images' })
   @ApiOkResponse({ type: PublicProductDto })
   @ApiNotFoundResponse()
   get(@Param('slug') slug: string) {
