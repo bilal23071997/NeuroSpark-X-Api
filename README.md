@@ -41,6 +41,10 @@ Only staff sign in (roles: admin, editor). Roles live in the static roles table;
 | GET, PATCH, DELETE | /admin/contact-messages | admin only |
 | GET, PUT | /admin/settings, /admin/settings/:key | admin only |
 | GET | /public/free-resources, /public/settings | public |
+| GET, PUT, DELETE, POST | /admin/payments/settings, /admin/payments/settings/:mode, /admin/payments/test | admin only (Stripe keys, masked; encrypted at rest) |
+| GET | /admin/orders, /admin/orders/:id | admin only |
+| GET, POST | /public/payments/status, /public/checkout, /public/orders/:sessionId, /public/orders/:sessionId/items/:itemId/download | public |
+| POST | /public/payments/webhook | public, Stripe signature checked |
 | POST | /public/newsletter, /public/contact | public, 5 per minute per IP |
 
 Articles are filed under niches; episodes carry a series slug (the series list is hardcoded on the website) and are YouTube links (an episode cannot be published without one). Only one article and one episode can be featured at a time.

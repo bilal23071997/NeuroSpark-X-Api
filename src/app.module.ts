@@ -8,6 +8,7 @@ import { ContentModule } from './content/content.module.js';
 import { EngagementModule } from './engagement/engagement.module.js';
 import { HealthController } from './health/health.controller.js';
 import { PagesModule } from './pages/pages.module.js';
+import { PaymentsModule } from './payments/payments.module.js';
 import { SettingsModule } from './settings/settings.module.js';
 import { StorageModule } from './storage/storage.module.js';
 import { UsersModule } from './users/users.module.js';
@@ -38,6 +39,7 @@ import { VaultModule } from './vault/vault.module.js';
     SettingsModule,
     StorageModule,
     PagesModule,
+    PaymentsModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

@@ -334,6 +334,8 @@ export class PublicProductSummaryDto {
   coverImageUrl: string | null;
   isFeatured: boolean;
   isPopular: boolean;
+  /** True when it has a price and a file, so it can go in the cart (checkout must also be on). */
+  purchasable: boolean;
   /** ISO date the product was first published. */
   date: string;
 }

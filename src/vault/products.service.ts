@@ -203,6 +203,8 @@ export class ProductsService {
       coverImageUrl: product.coverImageUrl,
       isFeatured: product.isFeatured,
       isPopular: product.isPopular,
+      // The file key itself stays private; only whether a sale is possible is public.
+      purchasable: product.priceCents > 0 && Boolean(product.fileKey),
       date: product.publishedAt!.toISOString(),
     };
   }

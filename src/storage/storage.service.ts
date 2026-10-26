@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'node:crypto';
 
@@ -44,6 +44,7 @@ export const UPLOAD_RULES: Record<UploadKind, KindRules> = {
 };
 
 const PRESIGN_SECONDS = 15 * 60;
+const DOWNLOAD_SECONDS = 10 * 60;
 
 export interface PresignedUpload {
   /** PUT the file bytes to this URL. */
@@ -152,6 +153,22 @@ export class StorageService {
       ...(input.kind === 'image' ? { publicUrl: `${publicBase}/${key}` } : {}),
       expiresInSeconds: PRESIGN_SECONDS,
     };
+  }
+
+  /** A short-lived link that downloads a private object under its original file name. */
+  async createDownloadUrl(key: string, fileName: string) {
+    if (!this.isConfigured()) {
+      throw new ServiceUnavailableException('File storage is not configured');
+    }
+    return getSignedUrl(
+      this.getClient(),
+      new GetObjectCommand({
+        Bucket: this.config.getOrThrow<string>('STORAGE_BUCKET'),
+        Key: key,
+        ResponseContentDisposition: `attachment; filename="${safeFileName(fileName)}"`,
+      }),
+      { expiresIn: DOWNLOAD_SECONDS },
+    );
   }
 
   private publicBaseUrl() {

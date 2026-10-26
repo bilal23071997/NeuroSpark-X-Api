@@ -1,4 +1,4 @@
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
@@ -13,7 +13,11 @@ function swaggerEnabled() {
 }
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const PORT = process.env.PORT ?? 3001
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    // Stripe webhooks are verified against the exact bytes received.
+    rawBody: true,
+  });
   // Behind nginx or a load balancer, rate limits must see the real client IP, not the proxy's.
   if (process.env.TRUST_PROXY === 'true') app.set('trust proxy', 1);
 
@@ -38,6 +42,8 @@ async function bootstrap() {
     });
   }
 
-  await app.listen(process.env.PORT ?? 3001);
+  await app.listen(PORT);
+
+  Logger.log(`Server running on ${PORT}`);
 }
 await bootstrap();

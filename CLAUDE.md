@@ -26,12 +26,13 @@ Sibling repos (each has its own `CLAUDE.md`):
 - **Files:** S3-compatible storage (R2/S3) with presigned PUT uploads. Images live under `public/` (public URL stored on the product); product files live under `private/` and their key is admin-only, never in a public response. There is no download endpoint until checkout exists.
 - Product pages are a fixed theme plus an ordered `sections` list (`text`, `bullets`, `faq`, `image`); no free-form page builder.
 - Site pages (`pages`: privacy, terms, ...) are admin-managed plain text and **seeded empty**: never invent legal text.
-- **Not built yet, don't add without being asked:** cart, checkout, Stripe, orders, secure paid downloads, email sending (newsletter/contact are stored only), email verification, forgot-password. No payment account exists yet.
+- **Payments (Stripe Checkout, hosted page):** module `payments`. Keys are entered in the admin (Payments screen) and stored AES-256-GCM encrypted (`PAYMENTS_ENCRYPTION_KEY`, env only); `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET` env vars override them. Prices always come from the database. Orders are found by their Stripe session id (no buyer accounts); `checkout.session.completed` webhook (raw body, signature checked) marks them paid, and the thank-you lookup also self-heals by asking Stripe. Paid files are served by 10-minute presigned GET links. Only products with a price and a file are purchasable; free products have no checkout. Never log or return secret keys.
+- **Not built yet, don't add without being asked:** refunds from the admin (done in the Stripe dashboard), tax, discount codes, email sending (newsletter/contact/receipts: Stripe emails the receipt), email verification, forgot-password. The live checkout has not been exercised against a real Stripe account yet.
 - Never create fake products, prices, reviews, download links or payment confirmations.
 
 ## Layout
 
-`src/` modules: `auth` (login/refresh/logout/me/password), `users` (+ first-admin seed), `roles`, `content` (niches, articles, episodes + `/public/*`), `vault` (5 official categories + sub-groups, products with sections/images/private file), `storage` (presigned uploads), `pages` (site pages), `engagement` (free resources, newsletter, contact), `settings` (4 fixed keys), `health`, `common` (decorators, role enum, hash helper).
+`src/` modules: `auth` (login/refresh/logout/me/password), `users` (+ first-admin seed), `roles`, `content` (niches, articles, episodes + `/public/*`), `vault` (5 official categories + sub-groups, products with sections/images/private file), `storage` (presigned uploads), `pages` (site pages), `engagement` (free resources, newsletter, contact), `settings` (4 fixed keys), `payments` (Stripe config, checkout, orders, webhook), `health`, `common` (decorators, role enum, hash helper).
 
 Conventions to follow when adding a module:
 - ESM: relative imports end in `.js`.
