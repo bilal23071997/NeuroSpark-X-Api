@@ -55,7 +55,7 @@ export class KeySetStatusDto {
   /** Masked, e.g. `sk_test_••••4f2a`; null when none is saved. */
   secretKey: string | null;
   webhookSecretSet: boolean;
-  /** The publishable key is not secret, so it is shown in full; null when none is saved. */
+  /** Masked like the secret key, e.g. `pk_test_••••4f2a`; null when none is saved. */
   publishableKey: string | null;
 }
 

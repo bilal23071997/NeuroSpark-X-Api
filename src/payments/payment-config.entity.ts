@@ -5,7 +5,7 @@ export type PaymentMode = 'test' | 'live';
 /**
  * The one row (id = 1) holding the Stripe setup the client enters in the admin
  * portal. Secrets are stored encrypted (see secret-box.ts) and never returned.
- * The publishable keys (pk_…) are public by design, so they are stored as plain text.
+ * The publishable keys are encrypted too, though Stripe treats them as public.
  */
 @Entity('payment_config')
 export class PaymentConfig {

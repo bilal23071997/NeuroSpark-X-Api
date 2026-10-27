@@ -1,9 +1,17 @@
-import { BadRequestException, Injectable, ServiceUnavailableException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import Stripe from 'stripe';
-import { KeySetDto, PaymentSettingsDto, UpdatePaymentSettingsDto } from './payments.dto.js';
+import {
+  KeySetDto,
+  PaymentSettingsDto,
+  UpdatePaymentSettingsDto,
+} from './payments.dto.js';
 import { PaymentConfig, PaymentMode } from './payment-config.entity.js';
 import { decryptSecret, encryptSecret, maskSecret } from './secret-box.js';
 
@@ -28,7 +36,8 @@ const KEY_PATTERN: Record<PaymentMode, RegExp> = {
 @Injectable()
 export class PaymentsConfigService {
   constructor(
-    @InjectRepository(PaymentConfig) private readonly configs: Repository<PaymentConfig>,
+    @InjectRepository(PaymentConfig)
+    private readonly configs: Repository<PaymentConfig>,
     private readonly config: ConfigService,
   ) {}
 
@@ -40,25 +49,31 @@ export class PaymentsConfigService {
         mode: envKey.includes('_live_') ? 'live' : 'test',
         secretKey: envKey,
         webhookSecret: this.config.get<string>('STRIPE_WEBHOOK_SECRET') ?? null,
-        publishableKey: this.config.get<string>('STRIPE_PUBLISHABLE_KEY') ?? null,
+        publishableKey:
+          this.config.get<string>('STRIPE_PUBLISHABLE_KEY') ?? null,
       };
     }
     if (!this.canDecrypt()) return null;
     const row = await this.row();
-    const secret = row.mode === 'live' ? row.liveSecretKeyEnc : row.testSecretKeyEnc;
+    const secret =
+      row.mode === 'live' ? row.liveSecretKeyEnc : row.testSecretKeyEnc;
     if (!secret) return null;
-    const webhook = row.mode === 'live' ? row.liveWebhookSecretEnc : row.testWebhookSecretEnc;
+    const webhook =
+      row.mode === 'live' ? row.liveWebhookSecretEnc : row.testWebhookSecretEnc;
     return {
       mode: row.mode,
       secretKey: decryptSecret(secret, this.passphrase()),
       webhookSecret: webhook ? decryptSecret(webhook, this.passphrase()) : null,
-      publishableKey: (row.mode === 'live' ? row.livePublishableKey : row.testPublishableKey) ?? null,
+      publishableKey: this.readPublishable(
+        row.mode === 'live' ? row.livePublishableKey : row.testPublishableKey,
+      ),
     };
   }
 
   async requireActive() {
     const keys = await this.active();
-    if (!keys) throw new ServiceUnavailableException('Payments are not set up yet');
+    if (!keys)
+      throw new ServiceUnavailableException('Payments are not set up yet');
     return keys;
   }
 
@@ -78,12 +93,26 @@ export class PaymentsConfigService {
     const row = await this.row();
     const canStoreKeys = this.canDecrypt();
     const status = (mode: PaymentMode) => {
-      const secret = mode === 'live' ? row.liveSecretKeyEnc : row.testSecretKeyEnc;
-      const webhook = mode === 'live' ? row.liveWebhookSecretEnc : row.testWebhookSecretEnc;
+      const secret =
+        mode === 'live' ? row.liveSecretKeyEnc : row.testSecretKeyEnc;
+      const webhook =
+        mode === 'live' ? row.liveWebhookSecretEnc : row.testWebhookSecretEnc;
       return {
-        secretKey: secret && canStoreKeys ? maskSecret(decryptSecret(secret, this.passphrase())) : null,
+        secretKey:
+          secret && canStoreKeys
+            ? maskSecret(decryptSecret(secret, this.passphrase()))
+            : null,
         webhookSecretSet: Boolean(webhook),
-        publishableKey: (mode === 'live' ? row.livePublishableKey : row.testPublishableKey) ?? null,
+        publishableKey: (() => {
+          const key = canStoreKeys
+            ? this.readPublishable(
+                mode === 'live'
+                  ? row.livePublishableKey
+                  : row.testPublishableKey,
+              )
+            : null;
+          return key ? maskSecret(key) : null;
+        })(),
       };
     };
     const active = await this.active();
@@ -108,7 +137,14 @@ export class PaymentsConfigService {
     this.applyKeys(row, 'test', dto.test);
     this.applyKeys(row, 'live', dto.live);
     if (dto.mode) {
-      if (dto.mode === 'live' && !(row.liveSecretKeyEnc && row.liveWebhookSecretEnc && row.livePublishableKey)) {
+      if (
+        dto.mode === 'live' &&
+        !(
+          row.liveSecretKeyEnc &&
+          row.liveWebhookSecretEnc &&
+          row.livePublishableKey
+        )
+      ) {
         throw new BadRequestException(
           'Save the live secret key, publishable key and webhook secret before switching to live',
         );
@@ -121,11 +157,14 @@ export class PaymentsConfigService {
   /** Removes the saved keys of one mode. Falls back to test when the live keys are removed while live is on. */
   async clear(mode: PaymentMode) {
     if (this.config.get('STRIPE_SECRET_KEY')) {
-      throw new BadRequestException('Stripe is configured through server environment variables');
+      throw new BadRequestException(
+        'Stripe is configured through server environment variables',
+      );
     }
     const row = await this.row();
     row[mode === 'live' ? 'liveSecretKeyEnc' : 'testSecretKeyEnc'] = null;
-    row[mode === 'live' ? 'liveWebhookSecretEnc' : 'testWebhookSecretEnc'] = null;
+    row[mode === 'live' ? 'liveWebhookSecretEnc' : 'testWebhookSecretEnc'] =
+      null;
     row[mode === 'live' ? 'livePublishableKey' : 'testPublishableKey'] = null;
     if (mode === 'live' && row.mode === 'live') row.mode = 'test';
     await this.configs.save(row);
@@ -139,22 +178,21 @@ export class PaymentsConfigService {
           `The ${mode} secret key must start with sk_${mode}_ (or rk_${mode}_ for a restricted key)`,
         );
       }
-      row[mode === 'live' ? 'liveSecretKeyEnc' : 'testSecretKeyEnc'] = encryptSecret(
-        keys.secretKey,
-        this.passphrase(),
-      );
+      row[mode === 'live' ? 'liveSecretKeyEnc' : 'testSecretKeyEnc'] =
+        encryptSecret(keys.secretKey, this.passphrase());
     }
     if (keys.publishableKey) {
       if (!PUBLISHABLE_PATTERN[mode].test(keys.publishableKey)) {
-        throw new BadRequestException(`The ${mode} publishable key must start with pk_${mode}_`);
+        throw new BadRequestException(
+          `The ${mode} publishable key must start with pk_${mode}_`,
+        );
       }
-      row[mode === 'live' ? 'livePublishableKey' : 'testPublishableKey'] = keys.publishableKey;
+      row[mode === 'live' ? 'livePublishableKey' : 'testPublishableKey'] =
+        encryptSecret(keys.publishableKey, this.passphrase());
     }
     if (keys.webhookSecret) {
-      row[mode === 'live' ? 'liveWebhookSecretEnc' : 'testWebhookSecretEnc'] = encryptSecret(
-        keys.webhookSecret,
-        this.passphrase(),
-      );
+      row[mode === 'live' ? 'liveWebhookSecretEnc' : 'testWebhookSecretEnc'] =
+        encryptSecret(keys.webhookSecret, this.passphrase());
     }
   }
 
@@ -172,6 +210,14 @@ export class PaymentsConfigService {
         liveWebhookSecretEnc: null,
       })
     );
+  }
+
+  /** Publishable keys are encrypted like the others; one saved before that (plain pk_…) still reads fine and is encrypted on its next save. */
+  private readPublishable(stored: string | null) {
+    if (!stored) return null;
+    return stored.startsWith('pk_')
+      ? stored
+      : decryptSecret(stored, this.passphrase());
   }
 
   private canDecrypt() {
