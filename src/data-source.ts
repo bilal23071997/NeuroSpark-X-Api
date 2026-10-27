@@ -1,4 +1,5 @@
 import { DataSource } from 'typeorm';
+import { migrations } from './migrations/index.js';
 
 // Used only by the TypeORM CLI (npm run migration:generate / migration:run),
 // which runs the compiled copy in dist/. The app itself is configured in
@@ -8,5 +9,5 @@ export default new DataSource({
   url: process.env.DATABASE_URL,
   ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
   entities: [`${import.meta.dirname}/**/*.entity.js`],
-  migrations: [`${import.meta.dirname}/migrations/*.js`],
+  migrations,
 });
