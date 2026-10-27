@@ -20,6 +20,13 @@ import { AdminOrderDto, CreateCheckoutDto, PublicOrderDto } from './payments.dto
 /** Letters and digits without the look-alikes (0/O, 1/I), for the reference shown to buyers. */
 const NUMBER_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
+/** What the buyer pays for one product right now. */
+const unitPrice = (product: Product) => product.salePriceCents ?? product.priceCents;
+
+/** A Stripe Checkout Session lives 24 hours. */
+const SESSION_LIFETIME_MS = 24 * 60 * 60 * 1000;
+const STRIPE_CHECK_GAP_MS = 5000;
+
 function newOrderNumber() {
   const bytes = randomBytes(6);
   return `NSX-${Array.from(bytes, (byte) => NUMBER_ALPHABET[byte % NUMBER_ALPHABET.length]).join('')}`;
@@ -28,6 +35,8 @@ function newOrderNumber() {
 @Injectable()
 export class OrdersService {
   private readonly logger = new Logger(OrdersService.name);
+  /** Session id -> when Stripe was last asked about it (per server instance). */
+  private readonly lastStripeCheck = new Map<string, number>();
 
   constructor(
     @InjectRepository(Order) private readonly orders: Repository<Order>,
@@ -52,42 +61,26 @@ export class OrdersService {
     for (const slug of slugs) {
       const product = bySlug.get(slug);
       if (!product) throw new BadRequestException(`"${slug}" is not available`);
-      if (product.priceCents <= 0 || !product.fileKey) {
+      if (unitPrice(product) <= 0 || !product.fileKey) {
         throw new BadRequestException(`"${product.name}" cannot be bought online`);
       }
     }
     const products = slugs.map((slug) => bySlug.get(slug)!);
-    const unitPrice = (product: Product) => product.salePriceCents ?? product.priceCents;
     const totalCents = products.reduce((sum, product) => sum + unitPrice(product), 0);
 
     const site = this.siteUrl();
     const { stripe, keys } = await this.payments.stripe();
-    const session = await stripe.checkout.sessions.create({
-      mode: 'payment',
-      line_items: products.map((product) => ({
-        quantity: 1,
-        price_data: {
-          currency: 'usd',
-          unit_amount: unitPrice(product),
-          product_data: {
-            name: product.name,
-            description: product.summary.slice(0, 300),
-            ...(product.coverImageUrl?.startsWith('https://') ? { images: [product.coverImageUrl] } : {}),
-          },
-        },
-      })),
-      success_url: `${site}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${site}/cart`,
-    });
-    if (!session.url) throw new ServiceUnavailableException('Stripe did not return a payment page');
 
-    await this.orders.save(
+    // The order is saved first. If it were saved after the Stripe session, a
+    // database error would leave the buyer with a payment page that Stripe
+    // can charge but that no order points to.
+    const order = await this.orders.save(
       this.orders.create({
         number: newOrderNumber(),
         status: 'pending',
         totalCents,
         currency: 'usd',
-        stripeSessionId: session.id,
+        stripeSessionId: null,
         mode: keys.mode,
         items: products.map((product) =>
           Object.assign(new OrderItem(), {
@@ -98,7 +91,46 @@ export class OrdersService {
         ),
       }),
     );
-    return { url: session.url };
+
+    let session: Stripe.Checkout.Session;
+    try {
+      session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        client_reference_id: order.id,
+        metadata: { orderId: order.id },
+        line_items: products.map((product) => ({
+          quantity: 1,
+          price_data: {
+            currency: 'usd',
+            unit_amount: unitPrice(product),
+            product_data: {
+              name: product.name,
+              description: product.summary.slice(0, 300),
+              ...(product.coverImageUrl?.startsWith('https://') ? { images: [product.coverImageUrl] } : {}),
+            },
+          },
+        })),
+        // Shown inside the website; Stripe sends the buyer to return_url after paying.
+        ui_mode: 'embedded_page',
+        return_url: `${site}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+      });
+      if (!session.client_secret || !keys.publishableKey) {
+        throw new ServiceUnavailableException('Stripe did not return a payment form');
+      }
+    } catch (error) {
+      await this.orders.update(order.id, { status: 'expired' });
+      throw error;
+    }
+
+    try {
+      await this.orders.update(order.id, { stripeSessionId: session.id });
+    } catch (error) {
+      // The buyer can still pay: the webhook finds the order through the session metadata.
+      this.logger.error(
+        `Order ${order.number}: could not store Stripe session ${session.id}: ${(error as Error).message}`,
+      );
+    }
+    return { clientSecret: session.client_secret, publishableKey: keys.publishableKey };
   }
 
   // ---------- Stripe -> us ----------
@@ -115,10 +147,24 @@ export class OrdersService {
     } catch {
       throw new BadRequestException('Invalid signature');
     }
-    if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
-      await this.applySession(event.data.object as Stripe.Checkout.Session);
-    } else if (event.type === 'checkout.session.expired') {
-      await this.markStatus((event.data.object as Stripe.Checkout.Session).id, 'expired', 'pending');
+    switch (event.type) {
+      case 'checkout.session.completed':
+      case 'checkout.session.async_payment_succeeded':
+        await this.applySession(event.data.object);
+        break;
+      case 'checkout.session.expired':
+      case 'checkout.session.async_payment_failed':
+        await this.markStatus(event.data.object.id, 'expired', 'pending');
+        break;
+      case 'charge.refunded': {
+        // Only a full refund closes the order; a partial one leaves it paid.
+        const charge = event.data.object;
+        const intent = typeof charge.payment_intent === 'string' ? charge.payment_intent : charge.payment_intent?.id;
+        if (charge.refunded && intent) {
+          await this.orders.update({ stripePaymentIntentId: intent, status: 'paid' }, { status: 'refunded' });
+        }
+        break;
+      }
     }
     return { received: true };
   }
@@ -129,7 +175,11 @@ export class OrdersService {
    */
   async findForBuyer(sessionId: string): Promise<PublicOrderDto> {
     let order = await this.bySession(sessionId);
-    if (order.status === 'pending') {
+    if (order.status === 'pending' && Date.now() - order.createdAt.getTime() > SESSION_LIFETIME_MS) {
+      // Stripe sessions end after 24 hours: stop asking, and close the order.
+      await this.markStatus(sessionId, 'expired', 'pending');
+      order.status = 'expired';
+    } else if (order.status === 'pending' && this.mayAskStripe(sessionId)) {
       try {
         const { stripe } = await this.payments.stripe();
         const session = await stripe.checkout.sessions.retrieve(sessionId);
@@ -174,10 +224,41 @@ export class OrdersService {
 
   // ---------- Internals ----------
 
+  /** At most one Stripe lookup per session every few seconds, however often the page polls. */
+  private mayAskStripe(sessionId: string) {
+    const now = Date.now();
+    if (now - (this.lastStripeCheck.get(sessionId) ?? 0) < STRIPE_CHECK_GAP_MS) return false;
+    this.lastStripeCheck.set(sessionId, now);
+    if (this.lastStripeCheck.size > 500) {
+      for (const [key, at] of this.lastStripeCheck) {
+        if (now - at > STRIPE_CHECK_GAP_MS) this.lastStripeCheck.delete(key);
+      }
+    }
+    return true;
+  }
+
   private async applySession(session: Stripe.Checkout.Session) {
     if (session.payment_status !== 'paid') return;
-    const order = await this.orders.findOneBy({ stripeSessionId: session.id });
-    if (!order || order.status === 'paid') return;
+    let order = await this.orders.findOneBy({ stripeSessionId: session.id });
+    const orderId = session.metadata?.orderId;
+    if (!order && orderId && /^[0-9a-f-]{36}$/i.test(orderId)) {
+      // The session id was never stored (see createCheckout): the metadata still points at the order.
+      order = await this.orders.findOneBy({ id: orderId });
+      if (order) order.stripeSessionId = session.id;
+    }
+    if (!order) {
+      this.logger.error(
+        `Paid Stripe session ${session.id} (payment ${String(session.payment_intent)}) matches no order. Check it in the Stripe dashboard.`,
+      );
+      return;
+    }
+    if (order.status === 'paid') return;
+    if (session.amount_total !== order.totalCents || session.currency?.toLowerCase() !== order.currency) {
+      this.logger.error(
+        `Order ${order.number} NOT marked paid: Stripe session ${session.id} charged ${session.amount_total} ${session.currency}, the order expects ${order.totalCents} ${order.currency}.`,
+      );
+      return;
+    }
     order.status = 'paid';
     order.paidAt = new Date();
     order.email = session.customer_details?.email ?? session.customer_email ?? order.email;

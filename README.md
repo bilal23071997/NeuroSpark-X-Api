@@ -49,16 +49,15 @@ Only staff sign in (roles: admin, editor). Roles live in the static roles table;
 
 Articles are filed under niches; episodes carry a series slug (the series list is hardcoded on the website) and are YouTube links (an episode cannot be published without one). Only one article and one episode can be featured at a time.
 
-The Vault is a catalog only: prices are integer US cents, there is no cart, checkout, Stripe or orders yet. The five categories are a static seeded table. Newsletter sign-ups and contact messages are stored, not emailed.
+The Vault catalog stores prices as integer US cents. Buying works through Stripe Checkout (hosted page): the website sends the product slugs to POST /public/checkout, the API re-reads the prices, saves the order, and sends the buyer to Stripe; the signed webhook marks the order paid and the buyer downloads the file from a 10-minute link. The five categories are a static seeded table. Newsletter sign-ups and contact messages are stored, not emailed.
 
-Rate limits: 120 requests/minute per IP overall, 10/minute on /auth/login, 5/minute on the public form posts. Set TRUST_PROXY=true behind nginx or Vercel so the real client IP is used. /docs is hidden in production unless SWAGGER_ENABLED=true.
+Rate limits: 120 requests/minute per visitor overall, 10/minute on /auth/login and POST /public/checkout, 5/minute on the public form posts, 20/minute on order lookups. Set TRUST_PROXY=true behind nginx or Vercel so the real client IP is used. The website calls this API from its own server, so it also sends the visitor address in X-Client-IP together with X-Internal-Key; the address is trusted only when the key equals INTERNAL_API_KEY (set the same value on both). /docs is hidden in production unless SWAGGER_ENABLED=true.
 
 Send Authorization: Bearer <accessToken>. Every route needs a token unless marked @Public(); narrow by role with @Roles(Role.Admin).
 
 ## Before production
 
-- Turn `DB_SYNCHRONIZE` off and switch to TypeORM migrations.
-- Add rate limiting on `/auth/login`.
+- Keep `DB_SYNCHRONIZE=false`: the schema is built by the migrations in `src/migrations` (run on startup; `DB_MIGRATIONS_RUN=false` skips them). After changing an entity, run `npm run migration:generate -- src/migrations/Name` and add the new class to `src/migrations/index.ts`. `npm run migration:run` applies them by hand.
 - Daily Postgres backups; keep the DB port closed to the internet.
 
 ## Deploying to Vercel
@@ -66,19 +65,19 @@ Send Authorization: Bearer <accessToken>. Every route needs a token unless marke
 NestJS deploys with zero config (entrypoint `src/main.ts`). Set these env vars on the Vercel project:
 
 - `DATABASE_URL`: the Supabase **transaction pooler** URL (port 6543, IPv4); the direct `db.*.supabase.co:5432` host is IPv6-only and will not connect from Vercel.
-- `DB_SSL=true`, `DB_SYNCHRONIZE=false`, `DB_POOL_MAX=1`, `TRUST_PROXY=true`
+- `DB_SSL=true`, `DB_SYNCHRONIZE=false` (the migrations create the tables on the first start), `DB_POOL_MAX=1`, `TRUST_PROXY=true`
 - `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` (new values, not the dev ones), `JWT_ACCESS_TTL`, `JWT_REFRESH_TTL`
 - `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD` (used once, when the users table is empty)
 - `CORS_ORIGINS`: the admin and website URLs, comma-separated, no trailing slash
 - `SWAGGER_ENABLED=true` only if `/docs` should be public
 
-Use a separate Supabase project for production if you can. Rate limits are counted per serverless instance, so they are looser than they look. Schema changes need migrations once `DB_SYNCHRONIZE` is off.
+Use a separate Supabase project for production if you can. Rate limits are counted per serverless instance, so they are looser than they look. Schema changes need a migration (see Before production).
 
 ## Vault groups, product pages, files and site pages
 
 - **Groups:** the five official categories are fixed top-level groups (seeded; never deletable, renamable or movable; only their description can be edited). Admins add, rename, reorder, move and delete **sub-groups** under them, one level deep. A product's `categoryId` can be a category or a sub-group. Deleting a sub-group that still has products is refused (409).
 - **Product pages:** a product has `coverImageUrl`, `galleryImages` and an ordered `sections` list (`text`, `bullets`, `faq`, `image`). The website draws them in a fixed theme; the admin only chooses content and order.
-- **Files:** uploads go straight to an S3-compatible bucket (Cloudflare R2 / S3) with a presigned URL from `POST /admin/uploads/presign`. Images (png, jpeg, webp, gif, up to 5 MB) go under `public/` and come back with a `publicUrl`. Product files (pdf, zip, epub, office, csv, audio, mp4; up to 1000 MB) go under `private/` and are never public: the `fileKey` appears only in admin responses, and nothing serves the file until checkout exists.
+- **Files:** uploads go straight to an S3-compatible bucket (Cloudflare R2 / S3) with a presigned URL from `POST /admin/uploads/presign`. Images (png, jpeg, webp, gif, up to 5 MB) go under `public/` and come back with a `publicUrl`. Product files (pdf, zip, epub, office, csv, audio, mp4; up to 1000 MB) go under `private/` and are never public: the `fileKey` appears only in admin responses, and a file is served only through the 10-minute download link of a paid order.
 - **Site pages:** `/admin/pages` holds privacy, terms and similar pages as plain text (blank line between paragraphs, `## ` starts a heading). No page is seeded.
 - **Env vars:** `STORAGE_ENDPOINT`, `STORAGE_BUCKET`, `STORAGE_ACCESS_KEY_ID`, `STORAGE_SECRET_ACCESS_KEY`, `STORAGE_REGION` (default `auto`), `STORAGE_PUBLIC_BASE_URL` (public address of the bucket's `public/` files, needed for images). If they are missing the API still starts and the upload endpoint answers 503.
 - **Roles:** Vault, uploads and pages endpoints are admin-only, so editors cannot use them.

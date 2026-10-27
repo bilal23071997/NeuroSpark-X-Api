@@ -11,7 +11,13 @@ export interface ActiveKeys {
   mode: PaymentMode;
   secretKey: string;
   webhookSecret: string | null;
+  publishableKey: string | null;
 }
+
+const PUBLISHABLE_PATTERN: Record<PaymentMode, RegExp> = {
+  test: /^pk_test_[A-Za-z0-9]+$/,
+  live: /^pk_live_[A-Za-z0-9]+$/,
+};
 
 const KEY_PATTERN: Record<PaymentMode, RegExp> = {
   test: /^(?:sk|rk)_test_[A-Za-z0-9]+$/,
@@ -34,6 +40,7 @@ export class PaymentsConfigService {
         mode: envKey.includes('_live_') ? 'live' : 'test',
         secretKey: envKey,
         webhookSecret: this.config.get<string>('STRIPE_WEBHOOK_SECRET') ?? null,
+        publishableKey: this.config.get<string>('STRIPE_PUBLISHABLE_KEY') ?? null,
       };
     }
     if (!this.canDecrypt()) return null;
@@ -45,6 +52,7 @@ export class PaymentsConfigService {
       mode: row.mode,
       secretKey: decryptSecret(secret, this.passphrase()),
       webhookSecret: webhook ? decryptSecret(webhook, this.passphrase()) : null,
+      publishableKey: (row.mode === 'live' ? row.livePublishableKey : row.testPublishableKey) ?? null,
     };
   }
 
@@ -60,10 +68,10 @@ export class PaymentsConfigService {
     return { stripe: new Stripe(keys.secretKey), keys };
   }
 
-  /** Checkout needs both the secret key and the webhook secret (the webhook is what marks orders paid). */
+  /** Checkout needs the secret key, the webhook secret (it marks orders paid) and the publishable key (it shows the form). */
   async isEnabled() {
     const keys = await this.active();
-    return Boolean(keys?.webhookSecret);
+    return Boolean(keys?.webhookSecret && keys.publishableKey);
   }
 
   async getForAdmin(webhookUrl: string): Promise<PaymentSettingsDto> {
@@ -75,6 +83,7 @@ export class PaymentsConfigService {
       return {
         secretKey: secret && canStoreKeys ? maskSecret(decryptSecret(secret, this.passphrase())) : null,
         webhookSecretSet: Boolean(webhook),
+        publishableKey: (mode === 'live' ? row.livePublishableKey : row.testPublishableKey) ?? null,
       };
     };
     const active = await this.active();
@@ -82,7 +91,7 @@ export class PaymentsConfigService {
       mode: active?.mode ?? row.mode,
       test: status('test'),
       live: status('live'),
-      enabled: Boolean(active?.webhookSecret),
+      enabled: Boolean(active?.webhookSecret && active.publishableKey),
       webhookUrl,
       fromEnvironment: Boolean(this.config.get('STRIPE_SECRET_KEY')),
       canStoreKeys,
@@ -99,9 +108,9 @@ export class PaymentsConfigService {
     this.applyKeys(row, 'test', dto.test);
     this.applyKeys(row, 'live', dto.live);
     if (dto.mode) {
-      if (dto.mode === 'live' && !(row.liveSecretKeyEnc && row.liveWebhookSecretEnc)) {
+      if (dto.mode === 'live' && !(row.liveSecretKeyEnc && row.liveWebhookSecretEnc && row.livePublishableKey)) {
         throw new BadRequestException(
-          'Save the live secret key and live webhook secret before switching to live',
+          'Save the live secret key, publishable key and webhook secret before switching to live',
         );
       }
       row.mode = dto.mode;
@@ -117,6 +126,7 @@ export class PaymentsConfigService {
     const row = await this.row();
     row[mode === 'live' ? 'liveSecretKeyEnc' : 'testSecretKeyEnc'] = null;
     row[mode === 'live' ? 'liveWebhookSecretEnc' : 'testWebhookSecretEnc'] = null;
+    row[mode === 'live' ? 'livePublishableKey' : 'testPublishableKey'] = null;
     if (mode === 'live' && row.mode === 'live') row.mode = 'test';
     await this.configs.save(row);
   }
@@ -134,6 +144,12 @@ export class PaymentsConfigService {
         this.passphrase(),
       );
     }
+    if (keys.publishableKey) {
+      if (!PUBLISHABLE_PATTERN[mode].test(keys.publishableKey)) {
+        throw new BadRequestException(`The ${mode} publishable key must start with pk_${mode}_`);
+      }
+      row[mode === 'live' ? 'livePublishableKey' : 'testPublishableKey'] = keys.publishableKey;
+    }
     if (keys.webhookSecret) {
       row[mode === 'live' ? 'liveWebhookSecretEnc' : 'testWebhookSecretEnc'] = encryptSecret(
         keys.webhookSecret,
@@ -150,6 +166,8 @@ export class PaymentsConfigService {
         mode: 'test',
         testSecretKeyEnc: null,
         testWebhookSecretEnc: null,
+        testPublishableKey: null,
+        livePublishableKey: null,
         liveSecretKeyEnc: null,
         liveWebhookSecretEnc: null,
       })

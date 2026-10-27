@@ -163,8 +163,8 @@ export class ProductsService {
   // ---------- Internals ----------
 
   private assertPrices(priceCents: number, salePriceCents: number | null) {
-    if (salePriceCents !== null && salePriceCents >= priceCents) {
-      throw new BadRequestException('salePriceCents must be lower than priceCents');
+    if (salePriceCents !== null && (salePriceCents <= 0 || salePriceCents >= priceCents)) {
+      throw new BadRequestException('salePriceCents must be above 0 and lower than priceCents');
     }
   }
 

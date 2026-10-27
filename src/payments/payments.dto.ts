@@ -25,6 +25,13 @@ export class KeySetDto {
   @Matches(/^whsec_[A-Za-z0-9]+$/, { message: 'The webhook secret must start with whsec_' })
   @MaxLength(300)
   webhookSecret?: string;
+
+  /** Publishable key (`pk_test_…` / `pk_live_…`). It is public: the website uses it to show Stripe's payment form. */
+  @IsOptional()
+  @IsString()
+  @Matches(/^pk_(?:test|live)_[A-Za-z0-9]+$/, { message: 'The publishable key must start with pk_test_ or pk_live_' })
+  @MaxLength(300)
+  publishableKey?: string;
 }
 
 export class UpdatePaymentSettingsDto {
@@ -48,6 +55,8 @@ export class KeySetStatusDto {
   /** Masked, e.g. `sk_test_••••4f2a`; null when none is saved. */
   secretKey: string | null;
   webhookSecretSet: boolean;
+  /** The publishable key is not secret, so it is shown in full; null when none is saved. */
+  publishableKey: string | null;
 }
 
 export class PaymentSettingsDto {
@@ -89,8 +98,10 @@ export class CreateCheckoutDto {
 }
 
 export class CheckoutSessionDto {
-  /** Send the buyer here (Stripe's hosted payment page). */
-  url: string;
+  /** Opens Stripe's payment form inside the website (embedded checkout). */
+  clientSecret: string;
+  /** Publishable key the website needs to load that form. */
+  publishableKey: string;
 }
 
 export class PaymentStatusDto {
@@ -118,7 +129,7 @@ export class PublicOrderDto {
 export class AdminOrderDto extends PublicOrderDto {
   id: string;
   mode: PaymentMode;
-  stripeSessionId: string;
+  stripeSessionId: string | null;
   stripePaymentIntentId: string | null;
   createdAt: Date;
   paidAt: Date | null;

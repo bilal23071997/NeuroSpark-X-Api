@@ -23,11 +23,11 @@ Sibling repos (each has its own `CLAUDE.md`):
 - Episodes are YouTube links (no audio/video hosting) and cannot be published without one.
 - Money is stored as integer cents (`priceCents`, `salePriceCents`).
 - **The five official Vault categories are fixed top-level groups** (seeded; cannot be deleted, renamed or moved; only their description is editable). Admins manage **sub-groups** under them, one level deep, and deleting a sub-group with products is refused.
-- **Files:** S3-compatible storage (R2/S3) with presigned PUT uploads. Images live under `public/` (public URL stored on the product); product files live under `private/` and their key is admin-only, never in a public response. There is no download endpoint until checkout exists.
+- **Files:** S3-compatible storage (R2/S3) with presigned PUT uploads. Images live under `public/` (public URL stored on the product); product files live under `private/` and their key is admin-only, never in a public response. Paid files are only reachable through a paid order's 10-minute download link.
 - Product pages are a fixed theme plus an ordered `sections` list (`text`, `bullets`, `faq`, `image`); no free-form page builder.
 - Site pages (`pages`: privacy, terms, ...) are admin-managed plain text and **seeded empty**: never invent legal text.
 - **Payments (Stripe Checkout, hosted page):** module `payments`. Keys are entered in the admin (Payments screen) and stored AES-256-GCM encrypted (`PAYMENTS_ENCRYPTION_KEY`, env only); `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET` env vars override them. Prices always come from the database. Orders are found by their Stripe session id (no buyer accounts); `checkout.session.completed` webhook (raw body, signature checked) marks them paid, and the thank-you lookup also self-heals by asking Stripe. Paid files are served by 10-minute presigned GET links. Only products with a price and a file are purchasable; free products have no checkout. Never log or return secret keys.
-- **Not built yet, don't add without being asked:** refunds from the admin (done in the Stripe dashboard), tax, discount codes, email sending (newsletter/contact/receipts: Stripe emails the receipt), email verification, forgot-password. The live checkout has not been exercised against a real Stripe account yet.
+- **Not built yet, don't add without being asked:** refunds from the admin (done in the Stripe dashboard), tax, discount codes, email sending (newsletter/contact/receipts: Stripe emails the receipt), email verification, forgot-password. Test-mode checkout works end to end locally; live mode is untested.
 - Never create fake products, prices, reviews, download links or payment confirmations.
 
 ## Layout
@@ -44,7 +44,8 @@ Conventions to follow when adding a module:
 - Publishing pattern: `draft`/`published`, `publishedAt` set the first time, one featured item at a time (set inside a transaction).
 - Vault, uploads and pages admin endpoints are admin-only (`@Roles(Role.Admin)`): editors are blocked from them.
 - `npm test` runs vitest unit tests (storage presigning with a mocked presigner, product sections, category rules with mocked repositories). A live upload could not be tested because no bucket exists yet.
-- Rate limits are on (`@nestjs/throttler`): 10/min on login, 5/min on public form posts. `/docs` is hidden in production unless `SWAGGER_ENABLED=true`.
+- **Schema = migrations** (`src/migrations`, listed in `index.ts`, run on boot). Keep `DB_SYNCHRONIZE=false` outside local dev; after changing an entity run `npm run migration:generate -- src/migrations/Name` and register the class. The baseline skips a database that already has `users`.
+- Rate limits are on (`@nestjs/throttler`, per visitor via `ClientIpThrottlerGuard`: the website sends `X-Client-IP` + `X-Internal-Key`, trusted only when the key matches `INTERNAL_API_KEY`): 10/min on login, 5/min on public form posts. `/docs` is hidden in production unless `SWAGGER_ENABLED=true`.
 
 ## Running it
 

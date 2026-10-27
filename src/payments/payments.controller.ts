@@ -41,6 +41,9 @@ import {
   UpdatePaymentSettingsDto,
 } from './payments.dto.js';
 
+// The thank-you page polls while Stripe confirms, so this is generous but not unlimited.
+const LOOKUP_LIMIT = { default: { limit: 20, ttl: 60_000 } };
+
 const ORDER_STATUSES: OrderStatus[] = ['pending', 'paid', 'expired', 'refunded'];
 
 @ApiTags('Admin - payments')
@@ -166,6 +169,7 @@ export class PublicCheckoutController {
   }
 
   @Get('orders/:sessionId')
+  @Throttle(LOOKUP_LIMIT)
   @ApiOperation({
     summary: 'The thank-you page order, found by its Stripe session id',
     description: 'The session id is long and unguessable, so it acts as the buyer’s receipt link.',
@@ -177,6 +181,7 @@ export class PublicCheckoutController {
   }
 
   @Get('orders/:sessionId/items/:itemId/download')
+  @Throttle(LOOKUP_LIMIT)
   @ApiOperation({ summary: 'A 10-minute download link for one purchased file (paid orders only)' })
   @ApiOkResponse({ schema: { properties: { url: { type: 'string' } } } })
   @ApiNotFoundResponse()

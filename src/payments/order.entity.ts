@@ -36,9 +36,10 @@ export class Order {
   @Column({ default: 'usd' })
   currency: string;
 
+  /** Null until the Stripe session exists; the unique index still allows many nulls. */
   @Index({ unique: true })
-  @Column()
-  stripeSessionId: string;
+  @Column({ type: 'varchar', nullable: true })
+  stripeSessionId: string | null;
 
   @Column({ type: 'varchar', nullable: true })
   stripePaymentIntentId: string | null;
