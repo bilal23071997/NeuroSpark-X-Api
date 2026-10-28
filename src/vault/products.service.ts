@@ -9,11 +9,12 @@ import { assertSlugFree, slugify } from '../content/helpers.js';
 import { PublishStatus } from '../content/publish-status.enum.js';
 import { Product } from './product.entity.js';
 import { normalizeSections } from './sections.js';
-import type {
-  CreateProductDto,
-  PublicProductDto,
-  PublicProductSummaryDto,
-  UpdateProductDto,
+import {
+  ProductSectionResponse,
+  type CreateProductDto,
+  type PublicProductDto,
+  type PublicProductSummaryDto,
+  type UpdateProductDto,
 } from './vault.dto.js';
 import { VaultCategoriesService } from './vault-categories.service.js';
 
@@ -160,15 +161,15 @@ export class ProductsService {
     if (!product) throw new NotFoundException('Product not found');
     return {
       ...this.toSummary(product),
-      description: product.description,
-      forWho: product.forWho,
-      included: product.included,
-      delivery: product.delivery,
-      galleryImages: product.galleryImages,
-      sections: product.sections,
+      Description: product.description,
+      ForWho: product.forWho,
+      Included: product.included,
+      Delivery: product.delivery,
+      GalleryImages: product.galleryImages,
+      Sections: product.sections.map((section) => ProductSectionResponse.from(section)),
       // The size is public; the file key is not — it is never put in a public response.
-      fileName: product.fileName,
-      fileSizeBytes: product.fileSizeBytes,
+      FileName: product.fileName,
+      FileSizeBytes: product.fileSizeBytes,
     };
   }
 
@@ -208,25 +209,25 @@ export class ProductsService {
 
   private toSummary(product: Product): PublicProductSummaryDto {
     return {
-      slug: product.slug,
-      name: product.name,
-      category: product.category.name,
-      categorySlug: product.category.slug,
-      parentCategory: product.category.parent?.name ?? null,
-      parentCategorySlug: product.category.parent?.slug ?? null,
-      format: product.format,
-      destination: product.destination,
-      priceCents: product.priceCents,
-      salePriceCents: product.salePriceCents,
-      currency: 'USD',
-      summary: product.summary,
-      symbol: product.symbol,
-      coverImageUrl: product.coverImageUrl,
-      isFeatured: product.isFeatured,
-      isPopular: product.isPopular,
+      Slug: product.slug,
+      Name: product.name,
+      Category: product.category.name,
+      CategorySlug: product.category.slug,
+      ParentCategory: product.category.parent?.name ?? null,
+      ParentCategorySlug: product.category.parent?.slug ?? null,
+      Format: product.format,
+      Destination: product.destination,
+      PriceCents: product.priceCents,
+      SalePriceCents: product.salePriceCents,
+      Currency: 'USD',
+      Summary: product.summary,
+      Symbol: product.symbol,
+      CoverImageUrl: product.coverImageUrl,
+      IsFeatured: product.isFeatured,
+      IsPopular: product.isPopular,
       // The file key itself stays private; only whether a sale is possible is public.
-      purchasable: product.priceCents > 0 && Boolean(product.fileKey),
-      date: product.publishedAt!.toISOString(),
+      Purchasable: product.priceCents > 0 && Boolean(product.fileKey),
+      Date: product.publishedAt!.toISOString(),
     };
   }
 }

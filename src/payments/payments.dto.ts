@@ -10,6 +10,7 @@ import {
   MaxLength,
   ValidateNested,
 } from 'class-validator';
+import type { OrderItem } from './order.entity.js';
 import type { PaymentMode } from './payment-config.entity.js';
 
 export class KeySetDto {
@@ -53,30 +54,30 @@ export class UpdatePaymentSettingsDto {
 
 export class KeySetStatusDto {
   /** Masked, e.g. `sk_test_••••4f2a`; null when none is saved. */
-  secretKey: string | null;
-  webhookSecretSet: boolean;
+  SecretKey: string | null;
+  WebhookSecretSet: boolean;
   /** Masked like the secret key, e.g. `pk_test_••••4f2a`; null when none is saved. */
-  publishableKey: string | null;
+  PublishableKey: string | null;
 }
 
 export class PaymentSettingsDto {
-  mode: PaymentMode;
-  test: KeySetStatusDto;
-  live: KeySetStatusDto;
+  Mode: PaymentMode;
+  Test: KeySetStatusDto;
+  Live: KeySetStatusDto;
   /** True when checkout can run in the current mode (secret key and webhook secret both saved). */
-  enabled: boolean;
+  Enabled: boolean;
   /** Paste this in Stripe (Developers > Webhooks) and subscribe to `checkout.session.completed` and `checkout.session.expired`. */
-  webhookUrl: string;
+  WebhookUrl: string;
   /** True when the keys come from server environment variables (STRIPE_*) and this screen cannot change them. */
-  fromEnvironment: boolean;
+  FromEnvironment: boolean;
   /** False when PAYMENTS_ENCRYPTION_KEY is missing, so keys cannot be saved here. */
-  canStoreKeys: boolean;
+  CanStoreKeys: boolean;
 }
 
 export class PaymentTestResultDto {
-  ok: boolean;
-  mode: PaymentMode;
-  message: string;
+  Ok: boolean;
+  Mode: PaymentMode;
+  Message: string;
 }
 
 export class CheckoutItemDto {
@@ -99,38 +100,58 @@ export class CreateCheckoutDto {
 
 export class CheckoutSessionDto {
   /** Opens Stripe's payment form inside the website (embedded checkout). */
-  clientSecret: string;
+  ClientSecret: string;
   /** Publishable key the website needs to load that form. */
-  publishableKey: string;
+  PublishableKey: string;
+}
+
+/** A short-lived link to one purchased file. */
+export class DownloadLinkDto {
+  /** Valid for 10 minutes. */
+  Url: string;
+}
+
+/** What the webhook answers Stripe with. */
+export class WebhookAckDto {
+  Received: boolean;
 }
 
 export class PaymentStatusDto {
   /** False until the owner has saved working keys; the website then keeps "Add to Cart" off. */
-  enabled: boolean;
+  Enabled: boolean;
 }
 
 export class OrderItemDto {
-  id: string;
-  name: string;
-  unitPriceCents: number;
+  Id: string;
+  Name: string;
+  UnitPriceCents: number;
   /** True when the file can still be downloaded (the product still exists and has a file). */
-  downloadable: boolean;
+  Downloadable: boolean;
+
+  static from(item: OrderItem, downloadable: boolean): OrderItemDto {
+    return Object.assign(new OrderItemDto(), {
+      Id: item.id,
+      Name: item.name,
+      UnitPriceCents: item.unitPriceCents,
+      Downloadable: downloadable,
+    });
+  }
 }
 
 export class PublicOrderDto {
-  number: string;
-  status: 'pending' | 'paid' | 'expired' | 'refunded';
-  email: string | null;
-  totalCents: number;
-  currency: string;
-  items: OrderItemDto[];
+  Number: string;
+  Status: 'pending' | 'paid' | 'expired' | 'refunded';
+  Email: string | null;
+  TotalCents: number;
+  Currency: string;
+  Items: OrderItemDto[];
 }
 
 export class AdminOrderDto extends PublicOrderDto {
-  id: string;
-  mode: PaymentMode;
-  stripeSessionId: string | null;
-  stripePaymentIntentId: string | null;
-  createdAt: Date;
-  paidAt: Date | null;
+  Id: string;
+  Mode: PaymentMode;
+  StripeSessionId: string | null;
+  StripePaymentIntentId: string | null;
+  CreatedAt: Date;
+  PaidAt: Date | null;
 }

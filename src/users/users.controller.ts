@@ -22,8 +22,8 @@ import {
 import { Roles } from '../common/decorators.js';
 import { Role } from '../common/role.enum.js';
 import { CreateUserDto, UpdateUserDto } from './dto.js';
-import { User } from './user.entity.js';
 import { UsersService } from './users.service.js';
+import { UserResponse } from './users.responses.js';
 
 @ApiTags('Admin - staff users')
 @ApiBearerAuth('access-token')
@@ -36,17 +36,17 @@ export class UsersController {
   @Get()
   @ApiOperation({ summary: 'List staff accounts, optionally by role' })
   @ApiQuery({ name: 'role', enum: Role, required: false })
-  @ApiOkResponse({ type: [User] })
-  findAll(@Query('role', new ParseEnumPipe(Role, { optional: true })) role?: Role) {
-    return this.users.findAll(role);
+  @ApiOkResponse({ type: [UserResponse] })
+  async findAll(@Query('role', new ParseEnumPipe(Role, { optional: true })) role?: Role) {
+    return (await this.users.findAll(role)).map((item) => UserResponse.from(item));
   }
 
   @Post()
   @ApiOperation({ summary: 'Create a staff account (admin or editor)' })
-  @ApiCreatedResponse({ type: User })
+  @ApiCreatedResponse({ type: UserResponse })
   @ApiConflictResponse({ description: 'Email already in use' })
-  create(@Body() dto: CreateUserDto) {
-    return this.users.create(dto);
+  async create(@Body() dto: CreateUserDto) {
+    return UserResponse.from(await this.users.create(dto));
   }
 
   @Patch(':id')
@@ -54,8 +54,8 @@ export class UsersController {
     summary: 'Update name, role, password or active state',
     description: 'Deactivating a user or changing their password ends their sessions.',
   })
-  @ApiOkResponse({ type: User })
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateUserDto) {
-    return this.users.update(id, dto);
+  @ApiOkResponse({ type: UserResponse })
+  async update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateUserDto) {
+    return UserResponse.from(await this.users.update(id, dto));
   }
 }

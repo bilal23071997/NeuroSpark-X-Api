@@ -33,7 +33,7 @@ export class PublicContentController {
   @ApiOkResponse({ type: [PublicNicheDto] })
   async listNiches(): Promise<PublicNicheDto[]> {
     const niches = await this.niches.findAll();
-    return niches.map(({ slug, name, description }) => ({ slug, name, description }));
+    return niches.map((niche) => PublicNicheDto.from(niche));
   }
 
   @Get('articles')

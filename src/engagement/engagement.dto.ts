@@ -11,6 +11,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { ECOSYSTEM_DESTINATION_SLUGS } from '../vault/constants.js';
+import type { FreeResource } from './free-resource.entity.js';
 
 // ---------- Free resources ----------
 
@@ -51,11 +52,21 @@ export class CreateFreeResourceDto {
 export class UpdateFreeResourceDto extends PartialType(CreateFreeResourceDto) {}
 
 export class PublicFreeResourceDto {
-  title: string;
-  description: string;
-  type: string;
-  destination: string | null;
-  url: string;
+  Title: string;
+  Description: string;
+  Type: string;
+  Destination: string | null;
+  Url: string;
+
+  static from(resource: FreeResource): PublicFreeResourceDto {
+    return Object.assign(new PublicFreeResourceDto(), {
+      Title: resource.title,
+      Description: resource.description,
+      Type: resource.type,
+      Destination: resource.destination,
+      Url: resource.url,
+    });
+  }
 }
 
 // ---------- Newsletter ----------
@@ -81,7 +92,7 @@ export class SetSubscribedDto {
 
 export class AcknowledgedDto {
   /** Always true: the response never reveals whether the address was already known. */
-  ok: boolean;
+  Ok: boolean;
 }
 
 // ---------- Contact ----------

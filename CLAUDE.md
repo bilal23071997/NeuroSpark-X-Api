@@ -30,6 +30,19 @@ Sibling repos (each has its own `CLAUDE.md`):
 - **Not built yet, don't add without being asked:** refunds from the admin (done in the Stripe dashboard), tax, discount codes, email sending (newsletter/contact/receipts: Stripe emails the receipt), email verification, forgot-password. Test-mode checkout works end to end locally; live mode is untested.
 - Never create fake products, prices, reviews, download links or payment confirmations.
 
+## Response format (every JSON answer)
+
+Requests send camelCase keys (`parentId`, `nicheId`). Answers always use one shape with **PascalCase keys at every depth** (`CompanyId`).
+
+- **Each endpoint builds its own response class.** A controller never returns an entity: it returns a class whose properties are already PascalCase and fills it with `Response.from(entity)` (admin: `content.responses.ts`, `engagement.responses.ts`, `pages.responses.ts`, `users.responses.ts`, `vault.responses.ts`; website and other shapes: the `*Dto` response classes in each module's `*.dto.ts`). Nothing renames keys at runtime, and Swagger documents these classes as they are. A new endpoint needs a response class with a `from()` (or an object typed as one).
+- The envelope is added by `src/common/response-envelope.interceptor.ts` (success) and `all-exceptions.filter.ts` (errors):
+  - Success: `{ Success: true, StatusCode, Data, MetaData: { Timestamp, Path, Count? } }` (`Count` only for lists).
+  - Failure: `{ Success: false, StatusCode, Error, ErrorMessage, Errors?, MetaData }` (`Errors` lists every validation message; `ErrorMessage` is the first).
+  - Files (the newsletter CSV, a plain string) are sent as they are. Unexpected errors are logged and answered with a generic 500.
+- `src/common/swagger-envelope.ts` puts each documented schema inside the wrapper so `/docs` shows the real shape.
+- `src/common/responses.spec.ts` checks that response classes have only capitalised keys and expose no password or token hashes.
+- The frontends read the answers as they are, with no key conversion: the admin's `src/lib/api/types.ts` is PascalCase, and the website declares PascalCase wire types (`Api*` in `src/lib/api.ts`) that it maps to its own camelCase types. Change the format in all three repos together.
+
 ## Layout
 
 `src/` modules: `auth` (login/refresh/logout/me/password), `users` (+ first-admin seed), `roles`, `content` (niches, articles, episodes + `/public/*`), `vault` (5 official categories + sub-groups, products with sections/images/private file), `storage` (presigned uploads), `pages` (site pages), `engagement` (free resources, newsletter, contact), `settings` (4 fixed keys), `payments` (Stripe config, checkout, orders, webhook), `health`, `common` (decorators, role enum, hash helper).

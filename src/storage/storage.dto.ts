@@ -27,13 +27,13 @@ export class CreateUploadDto {
 
 export class PresignedUploadDto {
   /** PUT the file bytes to this URL. */
-  uploadUrl: string;
-  method: 'PUT';
+  UploadUrl: string;
+  Method: 'PUT';
   /** Send exactly these headers with the PUT. */
-  headers: Record<string, string>;
+  Headers: Record<string, string>;
   /** For `product-file`: save as the product's `fileKey`. */
-  key: string;
+  Key: string;
   /** For `image`: save as the product's `coverImageUrl` / gallery / section `imageUrl`. */
-  publicUrl?: string;
-  expiresInSeconds: number;
+  PublicUrl?: string;
+  ExpiresInSeconds: number;
 }

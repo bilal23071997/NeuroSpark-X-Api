@@ -22,9 +22,9 @@ import {
 } from '@nestjs/swagger';
 import { Public, Roles } from '../common/decorators.js';
 import { Role } from '../common/role.enum.js';
-import { SitePage } from './page.entity.js';
 import { CreatePageDto, PublicPageDto, PublicPageLinkDto, UpdatePageDto } from './pages.dto.js';
 import { PagesService } from './pages.service.js';
+import { PageResponse } from './pages.responses.js';
 
 @ApiTags('Admin - site pages')
 @ApiBearerAuth('access-token')
@@ -36,49 +36,49 @@ export class AdminPagesController {
 
   @Get()
   @ApiOperation({ summary: 'List site pages (drafts and published)' })
-  @ApiOkResponse({ type: [SitePage] })
-  findAll() {
-    return this.pages.findAll();
+  @ApiOkResponse({ type: [PageResponse] })
+  async findAll() {
+    return (await this.pages.findAll()).map((item) => PageResponse.from(item));
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'One page' })
-  @ApiOkResponse({ type: SitePage })
+  @ApiOkResponse({ type: PageResponse })
   @ApiNotFoundResponse()
-  get(@Param('id', ParseUUIDPipe) id: string) {
-    return this.pages.get(id);
+  async get(@Param('id', ParseUUIDPipe) id: string) {
+    return PageResponse.from(await this.pages.get(id));
   }
 
   @Post()
   @ApiOperation({ summary: 'Create a page (starts as a draft)' })
-  @ApiCreatedResponse({ type: SitePage })
+  @ApiCreatedResponse({ type: PageResponse })
   @ApiConflictResponse({ description: 'Slug already in use' })
-  create(@Body() dto: CreatePageDto) {
-    return this.pages.create(dto);
+  async create(@Body() dto: CreatePageDto) {
+    return PageResponse.from(await this.pages.create(dto));
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Edit a page' })
-  @ApiOkResponse({ type: SitePage })
+  @ApiOkResponse({ type: PageResponse })
   @ApiNotFoundResponse()
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdatePageDto) {
-    return this.pages.update(id, dto);
+  async update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdatePageDto) {
+    return PageResponse.from(await this.pages.update(id, dto));
   }
 
   @Post(':id/publish')
   @HttpCode(200)
   @ApiOperation({ summary: 'Publish a page' })
-  @ApiOkResponse({ type: SitePage })
-  publish(@Param('id', ParseUUIDPipe) id: string) {
-    return this.pages.publish(id);
+  @ApiOkResponse({ type: PageResponse })
+  async publish(@Param('id', ParseUUIDPipe) id: string) {
+    return PageResponse.from(await this.pages.publish(id));
   }
 
   @Post(':id/unpublish')
   @HttpCode(200)
   @ApiOperation({ summary: 'Take a page back to draft' })
-  @ApiOkResponse({ type: SitePage })
-  unpublish(@Param('id', ParseUUIDPipe) id: string) {
-    return this.pages.unpublish(id);
+  @ApiOkResponse({ type: PageResponse })
+  async unpublish(@Param('id', ParseUUIDPipe) id: string) {
+    return PageResponse.from(await this.pages.unpublish(id));
   }
 
   @Delete(':id')

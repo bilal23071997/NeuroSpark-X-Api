@@ -54,13 +54,13 @@ describe('StorageService', () => {
       contentType: 'image/png',
       sizeBytes: 2048,
     });
-    expect(upload.key).toMatch(/^public\/\d{4}\/[0-9a-f-]{36}-my-cover\.png$/);
-    expect(upload.publicUrl).toBe(`https://cdn.example.com/${upload.key}`);
-    expect(upload.method).toBe('PUT');
-    expect(upload.headers).toEqual({ 'Content-Type': 'image/png', 'Content-Length': '2048' });
+    expect(upload.Key).toMatch(/^public\/\d{4}\/[0-9a-f-]{36}-my-cover\.png$/);
+    expect(upload.PublicUrl).toBe(`https://cdn.example.com/${upload.Key}`);
+    expect(upload.Method).toBe('PUT');
+    expect(upload.Headers).toEqual({ 'Content-Type': 'image/png', 'Content-Length': '2048' });
     expect(signed[0].input).toMatchObject({
       Bucket: 'neurospark',
-      Key: upload.key,
+      Key: upload.Key,
       ContentType: 'image/png',
       ContentLength: 2048,
     });
@@ -74,8 +74,8 @@ describe('StorageService', () => {
       contentType: 'application/pdf',
       sizeBytes: 5_000_000,
     });
-    expect(upload.key.startsWith('private/')).toBe(true);
-    expect(upload.publicUrl).toBeUndefined();
+    expect(upload.Key.startsWith('private/')).toBe(true);
+    expect(upload.PublicUrl).toBeUndefined();
   });
 
   it('lets a product file upload work without a public base URL, but not an image', async () => {

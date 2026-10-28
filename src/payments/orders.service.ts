@@ -17,8 +17,11 @@ import { Order, OrderItem, OrderStatus } from './order.entity.js';
 import { PaymentsConfigService } from './payments-config.service.js';
 import {
   AdminOrderDto,
+  CheckoutSessionDto,
   CreateCheckoutDto,
+  OrderItemDto,
   PublicOrderDto,
+  WebhookAckDto,
 } from './payments.dto.js';
 
 /** Letters and digits without the look-alikes (0/O, 1/I), for the reference shown to buyers. */
@@ -146,9 +149,9 @@ export class OrdersService {
       );
     }
     return {
-      clientSecret: session.client_secret,
-      publishableKey: keys.publishableKey,
-    };
+      ClientSecret: session.client_secret,
+      PublishableKey: keys.publishableKey,
+    } satisfies CheckoutSessionDto;
   }
 
   // ---------- Stripe -> us ----------
@@ -199,7 +202,7 @@ export class OrdersService {
         break;
       }
     }
-    return { received: true };
+    return { Received: true } satisfies WebhookAckDto;
   }
 
   /**
@@ -358,41 +361,35 @@ export class OrdersService {
         : [],
     );
     return {
-      number: order.number,
-      status: order.status,
-      email: order.email,
-      totalCents: order.totalCents,
-      currency: order.currency,
-      items: order.items.map((item) => ({
-        id: item.id,
-        name: item.name,
-        unitPriceCents: item.unitPriceCents,
-        downloadable:
+      Number: order.number,
+      Status: order.status,
+      Email: order.email,
+      TotalCents: order.totalCents,
+      Currency: order.currency,
+      Items: order.items.map((item) =>
+        OrderItemDto.from(
+          item,
           order.status === 'paid' &&
-          Boolean(item.productId && withFile.has(item.productId)),
-      })),
+            Boolean(item.productId && withFile.has(item.productId)),
+        ),
+      ),
     };
   }
 
   private toAdmin(order: Order): AdminOrderDto {
     return {
-      id: order.id,
-      number: order.number,
-      status: order.status,
-      email: order.email,
-      totalCents: order.totalCents,
-      currency: order.currency,
-      mode: order.mode,
-      stripeSessionId: order.stripeSessionId,
-      stripePaymentIntentId: order.stripePaymentIntentId,
-      createdAt: order.createdAt,
-      paidAt: order.paidAt,
-      items: order.items.map((item) => ({
-        id: item.id,
-        name: item.name,
-        unitPriceCents: item.unitPriceCents,
-        downloadable: false,
-      })),
+      Id: order.id,
+      Number: order.number,
+      Status: order.status,
+      Email: order.email,
+      TotalCents: order.totalCents,
+      Currency: order.currency,
+      Mode: order.mode,
+      StripeSessionId: order.stripeSessionId,
+      StripePaymentIntentId: order.stripePaymentIntentId,
+      CreatedAt: order.createdAt,
+      PaidAt: order.paidAt,
+      Items: order.items.map((item) => OrderItemDto.from(item, false)),
     };
   }
 

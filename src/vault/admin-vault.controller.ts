@@ -27,9 +27,9 @@ import {
 import { Roles } from '../common/decorators.js';
 import { Role } from '../common/role.enum.js';
 import { PublishStatus } from '../content/publish-status.enum.js';
-import { Product } from './product.entity.js';
 import { ProductsService } from './products.service.js';
 import { CreateProductDto, UpdateProductDto } from './vault.dto.js';
+import { ProductResponse } from './vault.responses.js';
 
 @ApiTags('Admin - The Vault')
 @ApiBearerAuth('access-token')
@@ -48,28 +48,28 @@ export class AdminVaultController {
     type: Number,
     description: 'A group id; an official category also matches its sub-groups',
   })
-  @ApiOkResponse({ type: [Product] })
-  findAll(
+  @ApiOkResponse({ type: [ProductResponse] })
+  async findAll(
     @Query('status', new ParseEnumPipe(PublishStatus, { optional: true })) status?: PublishStatus,
     @Query('categoryId', new ParseIntPipe({ optional: true })) categoryId?: number,
   ) {
-    return this.products.findAll({ status, categoryId });
+    return (await this.products.findAll({ status, categoryId })).map((item) => ProductResponse.from(item));
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'One product' })
-  @ApiOkResponse({ type: Product })
+  @ApiOkResponse({ type: ProductResponse })
   @ApiNotFoundResponse()
-  get(@Param('id', ParseUUIDPipe) id: string) {
-    return this.products.get(id);
+  async get(@Param('id', ParseUUIDPipe) id: string) {
+    return ProductResponse.from(await this.products.get(id));
   }
 
   @Post()
   @ApiOperation({ summary: 'Create a product (starts as a draft)' })
-  @ApiCreatedResponse({ type: Product })
+  @ApiCreatedResponse({ type: ProductResponse })
   @ApiConflictResponse({ description: 'Slug already in use' })
-  create(@Body() dto: CreateProductDto) {
-    return this.products.create(dto);
+  async create(@Body() dto: CreateProductDto) {
+    return ProductResponse.from(await this.products.create(dto));
   }
 
   @Patch(':id')
@@ -78,26 +78,26 @@ export class AdminVaultController {
     description:
       'Send only the fields to change. `sections` and `galleryImages` replace the whole list. Send null to clear coverImageUrl, salePriceCents, destination, symbol or the file fields.',
   })
-  @ApiOkResponse({ type: Product })
+  @ApiOkResponse({ type: ProductResponse })
   @ApiNotFoundResponse()
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateProductDto) {
-    return this.products.update(id, dto);
+  async update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateProductDto) {
+    return ProductResponse.from(await this.products.update(id, dto));
   }
 
   @Post(':id/publish')
   @HttpCode(200)
   @ApiOperation({ summary: 'Publish a product (sets its publish date the first time)' })
-  @ApiOkResponse({ type: Product })
-  publish(@Param('id', ParseUUIDPipe) id: string) {
-    return this.products.publish(id);
+  @ApiOkResponse({ type: ProductResponse })
+  async publish(@Param('id', ParseUUIDPipe) id: string) {
+    return ProductResponse.from(await this.products.publish(id));
   }
 
   @Post(':id/unpublish')
   @HttpCode(200)
   @ApiOperation({ summary: 'Take a product back to draft' })
-  @ApiOkResponse({ type: Product })
-  unpublish(@Param('id', ParseUUIDPipe) id: string) {
-    return this.products.unpublish(id);
+  @ApiOkResponse({ type: ProductResponse })
+  async unpublish(@Param('id', ParseUUIDPipe) id: string) {
+    return ProductResponse.from(await this.products.unpublish(id));
   }
 
   @Delete(':id')

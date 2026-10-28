@@ -19,7 +19,7 @@ import {
 } from 'class-validator';
 import { SLUG_PATTERN } from '../content/helpers.js';
 import { ECOSYSTEM_DESTINATION_SLUGS, PRODUCT_SYMBOLS } from './constants.js';
-import { SECTION_TYPES, type FaqItem, type SectionType } from './sections.js';
+import { SECTION_TYPES, type FaqItem, type ProductSection, type SectionType } from './sections.js';
 
 const SLUG_MESSAGE =
   'slug must be lowercase letters, numbers and single hyphens';
@@ -105,19 +105,19 @@ export class ReorderSubGroupsDto {
 }
 
 export class VaultGroupNodeDto {
-  id: number;
-  slug: string;
-  name: string;
-  description: string;
-  sortOrder: number;
+  Id: number;
+  Slug: string;
+  Name: string;
+  Description: string;
+  SortOrder: number;
   /** Null for top-level groups (the five official categories and any the admin added). */
-  parentId: number | null;
+  ParentId: number | null;
   /** True for the five official categories (never deletable, renamable or movable). Groups the admin created are false. */
-  isOfficial: boolean;
+  IsOfficial: boolean;
   /** Products in this group, drafts included. A top-level group also counts its sub-groups. */
-  productCount: number;
+  ProductCount: number;
   /** Sub-groups in order; always empty on a sub-group. */
-  children: VaultGroupNodeDto[];
+  Children: VaultGroupNodeDto[];
 }
 
 // ---------- Product page sections ----------
@@ -307,66 +307,87 @@ export class UpdateProductDto extends PartialType(CreateProductDto) {}
 // ---------- Public (website) responses ----------
 
 export class PublicVaultSubGroupDto {
-  slug: string;
-  name: string;
-  description: string;
+  Slug: string;
+  Name: string;
+  Description: string;
   /** Published products in this sub-group. */
-  productCount: number;
+  ProductCount: number;
 }
 
 export class PublicVaultCategoryDto extends PublicVaultSubGroupDto {
   /** Sub-groups in order. A top-level `productCount` includes them. */
-  children: PublicVaultSubGroupDto[];
+  Children: PublicVaultSubGroupDto[];
 }
 
 export class PublicProductSummaryDto {
-  slug: string;
-  name: string;
+  Slug: string;
+  Name: string;
   /** The name of the group the product sits in (may be a sub-group). */
-  category: string;
-  categorySlug: string;
+  Category: string;
+  CategorySlug: string;
   /** The official category above it when `category` is a sub-group; otherwise null. */
-  parentCategory: string | null;
-  parentCategorySlug: string | null;
-  format: string;
-  destination: string | null;
+  ParentCategory: string | null;
+  ParentCategorySlug: string | null;
+  Format: string;
+  Destination: string | null;
   /** Regular price in US cents; 0 means free. */
-  priceCents: number;
+  PriceCents: number;
   /** Sale price in US cents, or null when not on sale. */
-  salePriceCents: number | null;
-  currency: 'USD';
-  summary: string;
-  symbol: string | null;
+  SalePriceCents: number | null;
+  Currency: 'USD';
+  Summary: string;
+  Symbol: string | null;
   /** Public https image URL, or null (then draw `symbol`). */
-  coverImageUrl: string | null;
-  isFeatured: boolean;
-  isPopular: boolean;
+  CoverImageUrl: string | null;
+  IsFeatured: boolean;
+  IsPopular: boolean;
   /** True when it has a price and a file, so it can go in the cart (checkout must also be on). */
-  purchasable: boolean;
+  Purchasable: boolean;
   /** ISO date the product was first published. */
-  date: string;
+  Date: string;
 }
 
-export class PublicSectionDto {
-  id: string;
-  type: SectionType;
-  title?: string;
-  body?: string;
-  items?: string[];
-  faq?: FaqItemDto[];
-  imageUrl?: string;
-  alt?: string;
+export class FaqItemResponse {
+  Question: string;
+  Answer: string;
+}
+
+/** One page block of a product, as sent to the admin portal and the website. */
+export class ProductSectionResponse {
+  Id: string;
+  Type: SectionType;
+  Title?: string;
+  Body?: string;
+  Items?: string[];
+  Faq?: FaqItemResponse[];
+  ImageUrl?: string;
+  Alt?: string;
+
+  static from(section: ProductSection): ProductSectionResponse {
+    return Object.assign(new ProductSectionResponse(), {
+      Id: section.id,
+      Type: section.type,
+      Title: section.title,
+      Body: section.body,
+      Items: section.items,
+      Faq: section.faq?.map((entry) =>
+        Object.assign(new FaqItemResponse(), { Question: entry.question, Answer: entry.answer }),
+      ),
+      ImageUrl: section.imageUrl,
+      Alt: section.alt,
+    });
+  }
 }
 
 export class PublicProductDto extends PublicProductSummaryDto {
-  description: string;
-  forWho: string;
-  included: string[];
-  delivery: string;
-  galleryImages: string[];
+  Description: string;
+  ForWho: string;
+  Included: string[];
+  Delivery: string;
+  GalleryImages: string[];
   /** Page blocks in display order. */
-  sections: PublicSectionDto[];
+  Sections: ProductSectionResponse[];
   /** Size of the paid file, e.g. to show "PDF · 2.4 MB". The file itself is not downloadable yet. */
-  fileName: string | null;
-  fileSizeBytes: number | null;
+  FileName: string | null;
+  FileSizeBytes: number | null;
 }

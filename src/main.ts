@@ -3,6 +3,7 @@ import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module.js';
+import { wrapDocumentInEnvelope } from './common/swagger-envelope.js';
 
 /** /docs is on unless SWAGGER_ENABLED says otherwise; with no setting it is off in production. */
 function swaggerEnabled() {
@@ -33,11 +34,16 @@ async function bootstrap() {
   if (swaggerEnabled()) {
     const swaggerConfig = new DocumentBuilder()
       .setTitle('NeuroSpark X API')
-      .setDescription('Backend API for the NeuroSpark X website and admin portal.')
+      .setDescription(
+        'Backend API for the NeuroSpark X website and admin portal. Requests use camelCase keys; every answer is { Success, StatusCode, Data, MetaData } (errors: { Success, StatusCode, Error, ErrorMessage, Errors, MetaData }) with PascalCase keys.',
+      )
       .setVersion('1.0')
       .addBearerAuth({ type: 'http', scheme: 'bearer' }, 'access-token')
       .build();
-    SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, swaggerConfig), {
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    // The docs show what is really sent: the Success/Data wrapper and PascalCase keys.
+    wrapDocumentInEnvelope(document);
+    SwaggerModule.setup('docs', app, document, {
       swaggerOptions: { persistAuthorization: true },
     });
   }

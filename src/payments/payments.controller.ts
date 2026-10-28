@@ -34,6 +34,7 @@ import {
   AdminOrderDto,
   CheckoutSessionDto,
   CreateCheckoutDto,
+  DownloadLinkDto,
   PaymentSettingsDto,
   PaymentStatusDto,
   PaymentTestResultDto,
@@ -96,13 +97,13 @@ export class AdminPaymentsController {
   @ApiOkResponse({ type: PaymentTestResultDto })
   async test(): Promise<PaymentTestResultDto> {
     const keys = await this.payments.active();
-    if (!keys) return { ok: false, mode: 'test', message: 'No secret key is saved for the current mode' };
+    if (!keys) return { Ok: false, Mode: 'test', Message: 'No secret key is saved for the current mode' };
     try {
       const { stripe } = await this.payments.stripe();
       await stripe.balance.retrieve();
-      return { ok: true, mode: keys.mode, message: `Connected to Stripe in ${keys.mode} mode` };
+      return { Ok: true, Mode: keys.mode, Message: `Connected to Stripe in ${keys.mode} mode` };
     } catch (error) {
-      return { ok: false, mode: keys.mode, message: `Stripe rejected the key: ${(error as Error).message}` };
+      return { Ok: false, Mode: keys.mode, Message: `Stripe rejected the key: ${(error as Error).message}` };
     }
   }
 
@@ -152,7 +153,7 @@ export class PublicCheckoutController {
   @ApiOperation({ summary: 'Whether checkout is switched on' })
   @ApiOkResponse({ type: PaymentStatusDto })
   async status(): Promise<PaymentStatusDto> {
-    return { enabled: await this.payments.isEnabled() };
+    return { Enabled: await this.payments.isEnabled() };
   }
 
   @Post('checkout')
@@ -183,10 +184,13 @@ export class PublicCheckoutController {
   @Get('orders/:sessionId/items/:itemId/download')
   @Throttle(LOOKUP_LIMIT)
   @ApiOperation({ summary: 'A 10-minute download link for one purchased file (paid orders only)' })
-  @ApiOkResponse({ schema: { properties: { url: { type: 'string' } } } })
+  @ApiOkResponse({ type: DownloadLinkDto })
   @ApiNotFoundResponse()
-  async download(@Param('sessionId') sessionId: string, @Param('itemId') itemId: string) {
-    return { url: await this.orders.downloadUrl(sessionId, itemId) };
+  async download(
+    @Param('sessionId') sessionId: string,
+    @Param('itemId') itemId: string,
+  ): Promise<DownloadLinkDto> {
+    return { Url: await this.orders.downloadUrl(sessionId, itemId) };
   }
 
   /** Stripe calls this; the signature is checked against the raw body. */

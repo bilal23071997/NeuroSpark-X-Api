@@ -26,7 +26,6 @@ import {
 } from '@nestjs/swagger';
 import { Roles } from '../common/decorators.js';
 import { Role } from '../common/role.enum.js';
-import { ContactMessage } from './contact-message.entity.js';
 import {
   CreateFreeResourceDto,
   SetReadDto,
@@ -34,8 +33,7 @@ import {
   UpdateFreeResourceDto,
 } from './engagement.dto.js';
 import { EngagementService } from './engagement.service.js';
-import { FreeResource } from './free-resource.entity.js';
-import { NewsletterSubscriber } from './newsletter-subscriber.entity.js';
+import { ContactMessageResponse, FreeResourceResponse, SubscriberResponse } from './engagement.responses.js';
 
 @ApiTags('Admin - free resources')
 @ApiBearerAuth('access-token')
@@ -45,24 +43,24 @@ export class AdminFreeResourcesController {
 
   @Get()
   @ApiOperation({ summary: 'List free resources (lead magnets), including unpublished ones' })
-  @ApiOkResponse({ type: [FreeResource] })
-  findAll() {
-    return this.engagement.findAllResources();
+  @ApiOkResponse({ type: [FreeResourceResponse] })
+  async findAll() {
+    return (await this.engagement.findAllResources()).map((item) => FreeResourceResponse.from(item));
   }
 
   @Post()
   @ApiOperation({ summary: 'Add a free resource (hidden until isPublished is true)' })
-  @ApiCreatedResponse({ type: FreeResource })
-  create(@Body() dto: CreateFreeResourceDto) {
-    return this.engagement.createResource(dto);
+  @ApiCreatedResponse({ type: FreeResourceResponse })
+  async create(@Body() dto: CreateFreeResourceDto) {
+    return FreeResourceResponse.from(await this.engagement.createResource(dto));
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Edit a free resource, or publish/hide it with isPublished' })
-  @ApiOkResponse({ type: FreeResource })
+  @ApiOkResponse({ type: FreeResourceResponse })
   @ApiNotFoundResponse()
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateFreeResourceDto) {
-    return this.engagement.updateResource(id, dto);
+  async update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateFreeResourceDto) {
+    return FreeResourceResponse.from(await this.engagement.updateResource(id, dto));
   }
 
   @Delete(':id')
@@ -86,9 +84,9 @@ export class AdminNewsletterController {
   @Get()
   @ApiOperation({ summary: 'List subscribers, newest first' })
   @ApiQuery({ name: 'isSubscribed', required: false, type: Boolean })
-  @ApiOkResponse({ type: [NewsletterSubscriber] })
-  findAll(@Query('isSubscribed', new ParseBoolPipe({ optional: true })) isSubscribed?: boolean) {
-    return this.engagement.findAllSubscribers(isSubscribed);
+  @ApiOkResponse({ type: [SubscriberResponse] })
+  async findAll(@Query('isSubscribed', new ParseBoolPipe({ optional: true })) isSubscribed?: boolean) {
+    return (await this.engagement.findAllSubscribers(isSubscribed)).map((item) => SubscriberResponse.from(item));
   }
 
   @Get('export.csv')
@@ -102,10 +100,10 @@ export class AdminNewsletterController {
 
   @Patch(':id')
   @ApiOperation({ summary: 'Mark a subscriber as subscribed or unsubscribed' })
-  @ApiOkResponse({ type: NewsletterSubscriber })
+  @ApiOkResponse({ type: SubscriberResponse })
   @ApiNotFoundResponse()
-  setSubscribed(@Param('id', ParseUUIDPipe) id: string, @Body() dto: SetSubscribedDto) {
-    return this.engagement.setSubscribed(id, dto.isSubscribed);
+  async setSubscribed(@Param('id', ParseUUIDPipe) id: string, @Body() dto: SetSubscribedDto) {
+    return SubscriberResponse.from(await this.engagement.setSubscribed(id, dto.isSubscribed));
   }
 
   @Delete(':id')
@@ -130,17 +128,17 @@ export class AdminContactController {
   @Get()
   @ApiOperation({ summary: 'List contact messages, newest first' })
   @ApiQuery({ name: 'isRead', required: false, type: Boolean })
-  @ApiOkResponse({ type: [ContactMessage] })
-  findAll(@Query('isRead', new ParseBoolPipe({ optional: true })) isRead?: boolean) {
-    return this.engagement.findAllMessages(isRead);
+  @ApiOkResponse({ type: [ContactMessageResponse] })
+  async findAll(@Query('isRead', new ParseBoolPipe({ optional: true })) isRead?: boolean) {
+    return (await this.engagement.findAllMessages(isRead)).map((item) => ContactMessageResponse.from(item));
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Mark a message read or unread' })
-  @ApiOkResponse({ type: ContactMessage })
+  @ApiOkResponse({ type: ContactMessageResponse })
   @ApiNotFoundResponse()
-  setRead(@Param('id', ParseUUIDPipe) id: string, @Body() dto: SetReadDto) {
-    return this.engagement.setRead(id, dto.isRead);
+  async setRead(@Param('id', ParseUUIDPipe) id: string, @Body() dto: SetReadDto) {
+    return ContactMessageResponse.from(await this.engagement.setRead(id, dto.isRead));
   }
 
   @Delete(':id')

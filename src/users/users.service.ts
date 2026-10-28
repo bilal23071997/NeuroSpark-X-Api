@@ -32,6 +32,12 @@ export class UsersService {
     return this.users.findOneBy({ id });
   }
 
+  async getOrFail(id: string) {
+    const user = await this.findById(id);
+    if (!user) throw new NotFoundException('User not found');
+    return user;
+  }
+
   /** Includes the password hash — only for login. */
   findForLogin(email: string) {
     return this.users
@@ -77,7 +83,7 @@ export class UsersService {
       passwordHash: await bcrypt.hash(dto.password, BCRYPT_ROUNDS),
     });
     const saved = await this.users.save(user);
-    return this.findById(saved.id);
+    return this.getOrFail(saved.id);
   }
 
   async update(id: string, dto: UpdateUserDto) {
@@ -95,7 +101,7 @@ export class UsersService {
       user.refreshTokenHash = null;
     }
     await this.users.save(user);
-    return this.findById(id);
+    return this.getOrFail(id);
   }
 
   async changePassword(id: string, currentPassword: string, newPassword: string) {

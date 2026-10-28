@@ -13,19 +13,19 @@ export class SetSettingDto {
 }
 
 export class AdminSettingDto {
-  key: string;
-  label: string;
+  Key: string;
+  Label: string;
   /** `email` or `url`. */
-  kind: string;
-  description: string;
+  Kind: string;
+  Description: string;
   /** Null when not set yet. */
-  value: string | null;
+  Value: string | null;
 }
 
 /** Only the settings that have a value are present. */
 export class PublicSettingsDto {
-  contactEmail?: string;
-  linkverseUrl?: string;
-  whatsappUrl?: string;
-  telegramUrl?: string;
+  ContactEmail?: string;
+  LinkverseUrl?: string;
+  WhatsappUrl?: string;
+  TelegramUrl?: string;
 }

@@ -94,16 +94,16 @@ export class EpisodesService {
 
   private toPublic(episode: Episode): PublicEpisodeDto {
     return {
-      slug: episode.slug,
-      title: episode.title,
-      series: episode.series,
-      episodeNumber: episode.episodeNumber,
-      duration: episode.duration,
-      description: episode.description,
-      showNotes: episode.showNotes,
-      youtubeUrl: episode.youtubeUrl!,
-      date: episode.publishedAt!.toISOString(),
-      isFeatured: episode.isFeatured,
+      Slug: episode.slug,
+      Title: episode.title,
+      Series: episode.series,
+      EpisodeNumber: episode.episodeNumber,
+      Duration: episode.duration,
+      Description: episode.description,
+      ShowNotes: episode.showNotes,
+      YoutubeUrl: episode.youtubeUrl!,
+      Date: episode.publishedAt!.toISOString(),
+      IsFeatured: episode.isFeatured,
     };
   }
 }

@@ -25,13 +25,13 @@ import {
 import { Roles } from '../common/decorators.js';
 import { Role } from '../common/role.enum.js';
 import { VaultCategoriesService } from './vault-categories.service.js';
-import { VaultCategory } from './vault-category.entity.js';
 import {
   CreateGroupDto,
   ReorderSubGroupsDto,
   UpdateGroupDto,
   VaultGroupNodeDto,
 } from './vault.dto.js';
+import { VaultGroupResponse } from './vault.responses.js';
 
 /**
  * The five official categories are fixed top-level groups. Admins manage the
@@ -61,13 +61,13 @@ export class AdminVaultCategoriesController {
     summary:
       'Create a sub-group (send parentId) or a new top-level group (leave parentId out)',
   })
-  @ApiCreatedResponse({ type: VaultCategory })
+  @ApiCreatedResponse({ type: VaultGroupResponse })
   @ApiBadRequestResponse({
     description: 'The parent does not exist or is itself a sub-group',
   })
   @ApiConflictResponse({ description: 'Slug already in use' })
-  create(@Body() dto: CreateGroupDto) {
-    return this.categories.createGroup(dto);
+  async create(@Body() dto: CreateGroupDto) {
+    return VaultGroupResponse.from(await this.categories.createGroup(dto));
   }
 
   @Put('reorder')
@@ -91,13 +91,13 @@ export class AdminVaultCategoriesController {
     description:
       'A sub-group can change name, slug, description, order or parent. An official category accepts only `description`.',
   })
-  @ApiOkResponse({ type: VaultCategory })
+  @ApiOkResponse({ type: VaultGroupResponse })
   @ApiBadRequestResponse({
     description: 'Tried to change a locked field of an official category',
   })
   @ApiNotFoundResponse()
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateGroupDto) {
-    return this.categories.update(id, dto);
+  async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateGroupDto) {
+    return VaultGroupResponse.from(await this.categories.update(id, dto));
   }
 
   @Delete(':id')

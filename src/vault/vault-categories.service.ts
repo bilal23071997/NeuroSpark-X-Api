@@ -77,15 +77,15 @@ export class VaultCategoriesService implements OnModuleInit {
       this.countProducts(true),
     ]);
     return this.buildTree(groups, counts).map((top) => ({
-      slug: top.slug,
-      name: top.name,
-      description: top.description,
-      productCount: top.productCount,
-      children: top.children.map((child) => ({
-        slug: child.slug,
-        name: child.name,
-        description: child.description,
-        productCount: child.productCount,
+      Slug: top.Slug,
+      Name: top.Name,
+      Description: top.Description,
+      ProductCount: top.ProductCount,
+      Children: top.Children.map((child) => ({
+        Slug: child.Slug,
+        Name: child.Name,
+        Description: child.Description,
+        ProductCount: child.ProductCount,
       })),
     }));
   }
@@ -264,30 +264,30 @@ export class VaultCategoriesService implements OnModuleInit {
     counts: Map<number, number>,
   ): VaultGroupNodeDto[] {
     const toNode = (group: VaultCategory): VaultGroupNodeDto => ({
-      id: group.id,
-      slug: group.slug,
-      name: group.name,
-      description: group.description,
-      sortOrder: group.sortOrder,
-      parentId: group.parentId,
-      isOfficial: group.isOfficial,
-      productCount: counts.get(group.id) ?? 0,
-      children: [],
+      Id: group.id,
+      Slug: group.slug,
+      Name: group.name,
+      Description: group.description,
+      SortOrder: group.sortOrder,
+      ParentId: group.parentId,
+      IsOfficial: group.isOfficial,
+      ProductCount: counts.get(group.id) ?? 0,
+      Children: [],
     });
 
     const tops = groups.filter((group) => group.parentId === null).map(toNode);
     for (const top of tops) {
-      top.children = groups
-        .filter((group) => group.parentId === top.id)
+      top.Children = groups
+        .filter((group) => group.parentId === top.Id)
         .map(toNode)
         .sort(
-          (a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name),
+          (a, b) => a.SortOrder - b.SortOrder || a.Name.localeCompare(b.Name),
         );
-      top.productCount += top.children.reduce(
-        (sum, child) => sum + child.productCount,
+      top.ProductCount += top.Children.reduce(
+        (sum, child) => sum + child.ProductCount,
         0,
       );
     }
-    return tops.sort((a, b) => a.sortOrder - b.sortOrder);
+    return tops.sort((a, b) => a.SortOrder - b.SortOrder);
   }
 }

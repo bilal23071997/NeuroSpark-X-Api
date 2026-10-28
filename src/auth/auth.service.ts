@@ -7,6 +7,7 @@ import { sha256 } from '../common/hash.js';
 import { UsersService } from '../users/users.service.js';
 import type { User } from '../users/user.entity.js';
 import type { JwtPayload } from './auth.types.js';
+import type { TokensDto } from './dto.js';
 
 @Injectable()
 export class AuthService {
@@ -67,9 +68,9 @@ export class AuthService {
     ]);
     await this.users.setRefreshTokenHash(user.id, sha256(refreshToken));
     return {
-      accessToken,
-      refreshToken,
-      user: { id: user.id, email: user.email, name: user.name, role: user.role.name },
-    };
+      AccessToken: accessToken,
+      RefreshToken: refreshToken,
+      User: { Id: user.id, Email: user.email, Name: user.name, Role: user.role.name },
+    } satisfies TokensDto;
   }
 }

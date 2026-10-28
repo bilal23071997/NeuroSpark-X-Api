@@ -31,16 +31,16 @@ export class ChangePasswordDto {
 }
 
 export class SessionUserDto {
-  id: string;
-  email: string;
-  name: string;
-  role: Role;
+  Id: string;
+  Email: string;
+  Name: string;
+  Role: Role;
 }
 
 export class TokensDto {
   /** Short-lived (15 min). Send as `Authorization: Bearer <accessToken>`. */
-  accessToken: string;
+  AccessToken: string;
   /** Long-lived (7 days). Single use: each refresh returns a new one. */
-  refreshToken: string;
-  user: SessionUserDto;
+  RefreshToken: string;
+  User: SessionUserDto;
 }

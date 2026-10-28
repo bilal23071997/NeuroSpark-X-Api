@@ -1,12 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import type {
-  CreateFreeResourceDto,
+import {
   PublicFreeResourceDto,
-  SendContactMessageDto,
-  SubscribeDto,
-  UpdateFreeResourceDto,
+  type AcknowledgedDto,
+  type CreateFreeResourceDto,
+  type SendContactMessageDto,
+  type SubscribeDto,
+  type UpdateFreeResourceDto,
 } from './engagement.dto.js';
 import { ContactMessage } from './contact-message.entity.js';
 import { FreeResource } from './free-resource.entity.js';
@@ -59,13 +60,7 @@ export class EngagementService {
       where: { isPublished: true },
       order: { sortOrder: 'ASC', createdAt: 'DESC' },
     });
-    return resources.map(({ title, description, type, destination, url }) => ({
-      title,
-      description,
-      type,
-      destination,
-      url,
-    }));
+    return resources.map((resource) => PublicFreeResourceDto.from(resource));
   }
 
   // ---------- Newsletter ----------
@@ -85,7 +80,7 @@ export class EngagementService {
       { email, isSubscribed: false },
       { isSubscribed: true, unsubscribedAt: null },
     );
-    return { ok: true };
+    return { Ok: true } satisfies AcknowledgedDto;
   }
 
   findAllSubscribers(isSubscribed?: boolean) {
@@ -127,7 +122,7 @@ export class EngagementService {
       subject: dto.subject?.trim() || null,
       message: dto.message.trim(),
     });
-    return { ok: true };
+    return { Ok: true } satisfies AcknowledgedDto;
   }
 
   findAllMessages(isRead?: boolean) {

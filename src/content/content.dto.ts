@@ -12,6 +12,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { SLUG_PATTERN, YOUTUBE_URL_PATTERN } from './helpers.js';
+import type { Niche } from './niche.entity.js';
 
 const SLUG_MESSAGE = 'slug must be lowercase letters, numbers and single hyphens';
 
@@ -141,42 +142,50 @@ export class UpdateEpisodeDto extends PartialType(CreateEpisodeDto) {}
 // ---------- Public (website) responses ----------
 
 export class PublicNicheDto {
-  slug: string;
-  name: string;
-  description: string;
+  Slug: string;
+  Name: string;
+  Description: string;
+
+  static from(niche: Niche): PublicNicheDto {
+    return Object.assign(new PublicNicheDto(), {
+      Slug: niche.slug,
+      Name: niche.name,
+      Description: niche.description,
+    });
+  }
 }
 
 export class PublicArticleSummaryDto {
-  slug: string;
-  title: string;
+  Slug: string;
+  Title: string;
   /** The niche name. */
-  category: string;
-  nicheSlug: string;
-  excerpt: string;
+  Category: string;
+  NicheSlug: string;
+  Excerpt: string;
   /** ISO date the article was first published. */
-  date: string;
+  Date: string;
   /** @example 9 min read */
-  readTime: string;
-  isFeatured: boolean;
+  ReadTime: string;
+  IsFeatured: boolean;
 }
 
 export class PublicArticleDto extends PublicArticleSummaryDto {
-  body: string[];
-  seoTitle: string | null;
-  seoDescription: string | null;
+  Body: string[];
+  SeoTitle: string | null;
+  SeoDescription: string | null;
 }
 
 export class PublicEpisodeDto {
-  slug: string;
-  title: string;
+  Slug: string;
+  Title: string;
   /** Slug of the podcast series. */
-  series: string;
-  episodeNumber: number;
-  duration: string | null;
-  description: string;
-  showNotes: string[];
-  youtubeUrl: string;
+  Series: string;
+  EpisodeNumber: number;
+  Duration: string | null;
+  Description: string;
+  ShowNotes: string[];
+  YoutubeUrl: string;
   /** ISO date the episode was first published. */
-  date: string;
-  isFeatured: boolean;
+  Date: string;
+  IsFeatured: boolean;
 }

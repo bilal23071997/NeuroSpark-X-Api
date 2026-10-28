@@ -3,7 +3,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PublishStatus } from '../content/publish-status.enum.js';
 import { SitePage } from './page.entity.js';
-import type { CreatePageDto, PublicPageDto, PublicPageLinkDto, UpdatePageDto } from './pages.dto.js';
+import {
+  PublicPageDto,
+  PublicPageLinkDto,
+  type CreatePageDto,
+  type UpdatePageDto,
+} from './pages.dto.js';
 
 @Injectable()
 export class PagesService {
@@ -58,18 +63,13 @@ export class PagesService {
       where: { status: PublishStatus.Published },
       order: { title: 'ASC' },
     });
-    return pages.map(({ slug, title }) => ({ slug, title }));
+    return pages.map((page) => PublicPageLinkDto.from(page));
   }
 
   async getPublished(slug: string): Promise<PublicPageDto> {
     const page = await this.pages.findOneBy({ slug, status: PublishStatus.Published });
     if (!page) throw new NotFoundException('Page not found');
-    return {
-      slug: page.slug,
-      title: page.title,
-      body: page.body,
-      updatedAt: page.updatedAt.toISOString(),
-    };
+    return PublicPageDto.from(page);
   }
 
   // ---------- Internals ----------

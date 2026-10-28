@@ -11,11 +11,11 @@ import {
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { Public } from '../common/decorators.js';
-import { User } from '../users/user.entity.js';
 import { UsersService } from '../users/users.service.js';
 import type { AuthRequest } from './auth.types.js';
 import { AuthService } from './auth.service.js';
 import { ChangePasswordDto, LoginDto, RefreshDto, TokensDto } from './dto.js';
+import { UserResponse } from '../users/users.responses.js';
 
 /** Admin portal sign-in. Only staff (admin, editor) have accounts; shoppers never sign in. */
 @ApiTags('Auth')
@@ -61,9 +61,9 @@ export class AuthController {
   @Get('me')
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'The signed-in user, with their role' })
-  @ApiOkResponse({ type: User })
-  me(@Req() req: AuthRequest) {
-    return this.users.findById(req.user.id);
+  @ApiOkResponse({ type: UserResponse })
+  async me(@Req() req: AuthRequest) {
+    return UserResponse.from(await this.users.getOrFail(req.user.id));
   }
 
   @Post('password')

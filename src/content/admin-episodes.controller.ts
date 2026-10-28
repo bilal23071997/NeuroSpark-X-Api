@@ -24,9 +24,9 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { CreateEpisodeDto, UpdateEpisodeDto } from './content.dto.js';
-import { Episode } from './episode.entity.js';
 import { EpisodesService } from './episodes.service.js';
 import { PublishStatus } from './publish-status.enum.js';
+import { EpisodeResponse } from './content.responses.js';
 
 @ApiTags('Admin - episodes (Listen)')
 @ApiBearerAuth('access-token')
@@ -38,36 +38,36 @@ export class AdminEpisodesController {
   @ApiOperation({ summary: 'List episodes (drafts and published), newest number first' })
   @ApiQuery({ name: 'status', enum: PublishStatus, required: false })
   @ApiQuery({ name: 'series', required: false, description: 'Series slug' })
-  @ApiOkResponse({ type: [Episode] })
-  findAll(
+  @ApiOkResponse({ type: [EpisodeResponse] })
+  async findAll(
     @Query('status', new ParseEnumPipe(PublishStatus, { optional: true })) status?: PublishStatus,
     @Query('series') series?: string,
   ) {
-    return this.episodes.findAll({ status, series });
+    return (await this.episodes.findAll({ status, series })).map((item) => EpisodeResponse.from(item));
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'One episode' })
-  @ApiOkResponse({ type: Episode })
+  @ApiOkResponse({ type: EpisodeResponse })
   @ApiNotFoundResponse()
-  get(@Param('id', ParseUUIDPipe) id: string) {
-    return this.episodes.get(id);
+  async get(@Param('id', ParseUUIDPipe) id: string) {
+    return EpisodeResponse.from(await this.episodes.get(id));
   }
 
   @Post()
   @ApiOperation({ summary: 'Create an episode (starts as a draft)' })
-  @ApiCreatedResponse({ type: Episode })
+  @ApiCreatedResponse({ type: EpisodeResponse })
   @ApiConflictResponse({ description: 'Slug already in use' })
-  create(@Body() dto: CreateEpisodeDto) {
-    return this.episodes.create(dto);
+  async create(@Body() dto: CreateEpisodeDto) {
+    return EpisodeResponse.from(await this.episodes.create(dto));
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Edit an episode' })
-  @ApiOkResponse({ type: Episode })
+  @ApiOkResponse({ type: EpisodeResponse })
   @ApiNotFoundResponse()
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateEpisodeDto) {
-    return this.episodes.update(id, dto);
+  async update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateEpisodeDto) {
+    return EpisodeResponse.from(await this.episodes.update(id, dto));
   }
 
   @Post(':id/publish')
@@ -76,18 +76,18 @@ export class AdminEpisodesController {
     summary: 'Publish an episode',
     description: 'Needs a YouTube link. Sets the publish date the first time.',
   })
-  @ApiOkResponse({ type: Episode })
+  @ApiOkResponse({ type: EpisodeResponse })
   @ApiBadRequestResponse({ description: 'The episode has no YouTube link yet' })
-  publish(@Param('id', ParseUUIDPipe) id: string) {
-    return this.episodes.publish(id);
+  async publish(@Param('id', ParseUUIDPipe) id: string) {
+    return EpisodeResponse.from(await this.episodes.publish(id));
   }
 
   @Post(':id/unpublish')
   @HttpCode(200)
   @ApiOperation({ summary: 'Take an episode back to draft' })
-  @ApiOkResponse({ type: Episode })
-  unpublish(@Param('id', ParseUUIDPipe) id: string) {
-    return this.episodes.unpublish(id);
+  @ApiOkResponse({ type: EpisodeResponse })
+  async unpublish(@Param('id', ParseUUIDPipe) id: string) {
+    return EpisodeResponse.from(await this.episodes.unpublish(id));
   }
 
   @Delete(':id')

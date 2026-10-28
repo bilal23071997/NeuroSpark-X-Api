@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { SETTING_DEFINITIONS, SETTING_KEYS, type SettingKey } from './settings.constants.js';
-import type { AdminSettingDto, PublicSettingsDto } from './settings.dto.js';
+import { PublicSettingsDto, type AdminSettingDto } from './settings.dto.js';
 import { SiteSetting } from './site-setting.entity.js';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -14,17 +14,23 @@ export class SettingsService {
   async listForAdmin(): Promise<AdminSettingDto[]> {
     const values = await this.valueMap();
     return SETTING_KEYS.map((key) => ({
-      key,
-      label: SETTING_DEFINITIONS[key].label,
-      kind: SETTING_DEFINITIONS[key].kind,
-      description: SETTING_DEFINITIONS[key].description,
-      value: values.get(key) ?? null,
+      Key: key,
+      Label: SETTING_DEFINITIONS[key].label,
+      Kind: SETTING_DEFINITIONS[key].kind,
+      Description: SETTING_DEFINITIONS[key].description,
+      Value: values.get(key) ?? null,
     }));
   }
 
   async getPublic(): Promise<PublicSettingsDto> {
     const values = await this.valueMap();
-    return Object.fromEntries(SETTING_KEYS.filter((key) => values.has(key)).map((key) => [key, values.get(key)]));
+    // Only the settings that have a value are sent.
+    return Object.assign(new PublicSettingsDto(), {
+      ...(values.has('contactEmail') && { ContactEmail: values.get('contactEmail') }),
+      ...(values.has('linkverseUrl') && { LinkverseUrl: values.get('linkverseUrl') }),
+      ...(values.has('whatsappUrl') && { WhatsappUrl: values.get('whatsappUrl') }),
+      ...(values.has('telegramUrl') && { TelegramUrl: values.get('telegramUrl') }),
+    });
   }
 
   async set(key: string, rawValue: string | null | undefined): Promise<AdminSettingDto> {
@@ -38,7 +44,7 @@ export class SettingsService {
       this.validate(definition.kind, value, definition.label);
       await this.settings.save({ key, value });
     }
-    return { key, label: definition.label, kind: definition.kind, description: definition.description, value: value || null };
+    return { Key: key, Label: definition.label, Kind: definition.kind, Description: definition.description, Value: value || null };
   }
 
   private validate(kind: 'email' | 'url', value: string, label: string) {

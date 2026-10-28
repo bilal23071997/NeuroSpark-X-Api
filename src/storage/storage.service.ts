@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'node:crypto';
+import type { PresignedUploadDto } from './storage.dto.js';
 
 export type UploadKind = 'image' | 'product-file';
 
@@ -45,19 +46,6 @@ export const UPLOAD_RULES: Record<UploadKind, KindRules> = {
 
 const PRESIGN_SECONDS = 15 * 60;
 const DOWNLOAD_SECONDS = 10 * 60;
-
-export interface PresignedUpload {
-  /** PUT the file bytes to this URL. */
-  uploadUrl: string;
-  method: 'PUT';
-  /** Send exactly these headers with the PUT (Content-Type and Content-Length are signed). */
-  headers: Record<string, string>;
-  /** Save this on the product (`fileKey`) or keep it to delete the object later. */
-  key: string;
-  /** Present for images only: the public URL to store on the product. */
-  publicUrl?: string;
-  expiresInSeconds: number;
-}
 
 /** Turns an upload name into a safe object-key tail: lowercase letters, numbers, dots, hyphens. */
 export function safeFileName(fullName: string) {
@@ -104,7 +92,7 @@ export class StorageService {
     fileName: string;
     contentType: string;
     sizeBytes: number;
-  }): Promise<PresignedUpload> {
+  }): Promise<PresignedUploadDto> {
     if (!this.isConfigured()) {
       throw new ServiceUnavailableException(
         'File storage is not configured. Set the STORAGE_* environment variables.',
@@ -143,15 +131,15 @@ export class StorageService {
     );
 
     return {
-      uploadUrl,
-      method: 'PUT',
-      headers: {
+      UploadUrl: uploadUrl,
+      Method: 'PUT',
+      Headers: {
         'Content-Type': input.contentType,
         'Content-Length': String(input.sizeBytes),
       },
-      key,
-      ...(input.kind === 'image' ? { publicUrl: `${publicBase}/${key}` } : {}),
-      expiresInSeconds: PRESIGN_SECONDS,
+      Key: key,
+      ...(input.kind === 'image' ? { PublicUrl: `${publicBase}/${key}` } : {}),
+      ExpiresInSeconds: PRESIGN_SECONDS,
     };
   }
 

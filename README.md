@@ -18,6 +18,22 @@ On first start, if the users table is empty, an admin is created from
 
 Interactive docs: http://localhost:3001/docs (OpenAPI JSON at /docs-json, importable in Postman).
 
+### Request and response format
+
+Requests send camelCase keys (`parentId`, `nicheId`). Every JSON answer has the same shape, with PascalCase keys at every depth (`CompanyId`):
+
+```json
+{ "Success": true, "StatusCode": 200, "Data": { }, "MetaData": { "Timestamp": "…", "Path": "/public/niches", "Count": 2 } }
+```
+
+`Count` appears only for lists. A failure looks like this (`Errors` lists every validation problem and is left out when there is only one):
+
+```json
+{ "Success": false, "StatusCode": 400, "Error": "Bad Request", "ErrorMessage": "email must be an email", "Errors": ["…"], "MetaData": { "Timestamp": "…", "Path": "/auth/login" } }
+```
+
+The newsletter CSV export is a file and is sent as it is. `/docs` shows these real shapes.
+
 Only staff sign in (roles: admin, editor). Roles live in the static roles table; users.roleId is a foreign key to it. Website shoppers have no accounts.
 
 | Method | Path | Access |

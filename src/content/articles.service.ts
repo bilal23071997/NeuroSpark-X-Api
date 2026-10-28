@@ -95,9 +95,9 @@ export class ArticlesService {
     if (!article) throw new NotFoundException('Article not found');
     return {
       ...this.toSummary(article),
-      body: article.body,
-      seoTitle: article.seoTitle,
-      seoDescription: article.seoDescription,
+      Body: article.body,
+      SeoTitle: article.seoTitle,
+      SeoDescription: article.seoDescription,
     };
   }
 
@@ -122,14 +122,14 @@ export class ArticlesService {
 
   private toSummary(article: Article): PublicArticleSummaryDto {
     return {
-      slug: article.slug,
-      title: article.title,
-      category: article.niche.name,
-      nicheSlug: article.niche.slug,
-      excerpt: article.excerpt,
-      date: article.publishedAt!.toISOString(),
-      readTime: readTime(article.body),
-      isFeatured: article.isFeatured,
+      Slug: article.slug,
+      Title: article.title,
+      Category: article.niche.name,
+      NicheSlug: article.niche.slug,
+      Excerpt: article.excerpt,
+      Date: article.publishedAt!.toISOString(),
+      ReadTime: readTime(article.body),
+      IsFeatured: article.isFeatured,
     };
   }
 }

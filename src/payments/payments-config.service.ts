@@ -98,12 +98,12 @@ export class PaymentsConfigService {
       const webhook =
         mode === 'live' ? row.liveWebhookSecretEnc : row.testWebhookSecretEnc;
       return {
-        secretKey:
+        SecretKey:
           secret && canStoreKeys
             ? maskSecret(decryptSecret(secret, this.passphrase()))
             : null,
-        webhookSecretSet: Boolean(webhook),
-        publishableKey: (() => {
+        WebhookSecretSet: Boolean(webhook),
+        PublishableKey: (() => {
           const key = canStoreKeys
             ? this.readPublishable(
                 mode === 'live'
@@ -117,13 +117,13 @@ export class PaymentsConfigService {
     };
     const active = await this.active();
     return {
-      mode: active?.mode ?? row.mode,
-      test: status('test'),
-      live: status('live'),
-      enabled: Boolean(active?.webhookSecret && active.publishableKey),
-      webhookUrl,
-      fromEnvironment: Boolean(this.config.get('STRIPE_SECRET_KEY')),
-      canStoreKeys,
+      Mode: active?.mode ?? row.mode,
+      Test: status('test'),
+      Live: status('live'),
+      Enabled: Boolean(active?.webhookSecret && active.publishableKey),
+      WebhookUrl: webhookUrl,
+      FromEnvironment: Boolean(this.config.get('STRIPE_SECRET_KEY')),
+      CanStoreKeys: canStoreKeys,
     };
   }
 

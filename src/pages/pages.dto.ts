@@ -1,6 +1,7 @@
 import { PartialType } from '@nestjs/swagger';
 import { IsString, Matches, MaxLength, MinLength } from 'class-validator';
 import { SLUG_PATTERN } from '../content/helpers.js';
+import type { SitePage } from './page.entity.js';
 
 export class CreatePageDto {
   /** The page address: "privacy" is served at /privacy. Lowercase letters, numbers, hyphens. @example privacy */
@@ -24,12 +25,25 @@ export class CreatePageDto {
 export class UpdatePageDto extends PartialType(CreatePageDto) {}
 
 export class PublicPageLinkDto {
-  slug: string;
-  title: string;
+  Slug: string;
+  Title: string;
+
+  static from(page: SitePage): PublicPageLinkDto {
+    return Object.assign(new PublicPageLinkDto(), { Slug: page.slug, Title: page.title });
+  }
 }
 
 export class PublicPageDto extends PublicPageLinkDto {
-  body: string;
+  Body: string;
   /** ISO date of the last edit. */
-  updatedAt: string;
+  UpdatedAt: string;
+
+  static from(page: SitePage): PublicPageDto {
+    return Object.assign(new PublicPageDto(), {
+      Slug: page.slug,
+      Title: page.title,
+      Body: page.body,
+      UpdatedAt: page.updatedAt.toISOString(),
+    });
+  }
 }
