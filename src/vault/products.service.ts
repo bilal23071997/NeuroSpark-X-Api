@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FindOptionsWhere, Repository } from 'typeorm';
 import { assertSlugFree, slugify } from '../content/helpers.js';
@@ -38,7 +42,9 @@ export class ProductsService {
 
   /** `categoryId` of an official category also matches products in its sub-groups. */
   findAll(filter: { status?: PublishStatus; categoryId?: number }) {
-    const base: FindOptionsWhere<Product> = filter.status ? { status: filter.status } : {};
+    const base: FindOptionsWhere<Product> = filter.status
+      ? { status: filter.status }
+      : {};
     return this.products.find({
       // TypeORM rejects `undefined` values, so only pass the filters that were given.
       where: filter.categoryId
@@ -53,7 +59,10 @@ export class ProductsService {
   }
 
   async get(id: string) {
-    const product = await this.products.findOne({ where: { id }, relations: WITH_GROUP });
+    const product = await this.products.findOne({
+      where: { id },
+      relations: WITH_GROUP,
+    });
     if (!product) throw new NotFoundException('Product not found');
     return product;
   }
@@ -75,14 +84,17 @@ export class ProductsService {
 
   async update(id: string, dto: UpdateProductDto) {
     const product = await this.get(id);
-    if (dto.slug && dto.slug !== product.slug) await assertSlugFree(this.products, dto.slug, id);
+    if (dto.slug && dto.slug !== product.slug)
+      await assertSlugFree(this.products, dto.slug, id);
     if (dto.categoryId && dto.categoryId !== product.categoryId) {
       await this.categories.getOrFail(dto.categoryId);
     }
 
     // A PATCH may send null to clear an optional field; for required fields it is ignored.
     const changes: Record<string, unknown> = Object.fromEntries(
-      Object.entries(dto).filter(([key, value]) => value !== null || NULLABLE_FIELDS.includes(key)),
+      Object.entries(dto).filter(
+        ([key, value]) => value !== null || NULLABLE_FIELDS.includes(key),
+      ),
     );
     if (dto.sections) changes.sections = normalizeSections(dto.sections);
 
@@ -163,16 +175,25 @@ export class ProductsService {
   // ---------- Internals ----------
 
   private assertPrices(priceCents: number, salePriceCents: number | null) {
-    if (salePriceCents !== null && (salePriceCents <= 0 || salePriceCents >= priceCents)) {
-      throw new BadRequestException('salePriceCents must be above 0 and lower than priceCents');
+    if (
+      salePriceCents !== null &&
+      (salePriceCents <= 0 || salePriceCents >= priceCents)
+    ) {
+      throw new BadRequestException(
+        'salePriceCents must be above 0 and lower than priceCents',
+      );
     }
   }
 
   /** The paid file is described by its key, name and size together, or not at all. */
-  private assertFileFields(product: Pick<Product, 'fileKey' | 'fileName' | 'fileSizeBytes'>) {
-    const set = [product.fileKey, product.fileName, product.fileSizeBytes].filter(
-      (value) => value !== null && value !== undefined,
-    ).length;
+  private assertFileFields(
+    product: Pick<Product, 'fileKey' | 'fileName' | 'fileSizeBytes'>,
+  ) {
+    const set = [
+      product.fileKey,
+      product.fileName,
+      product.fileSizeBytes,
+    ].filter((value) => value !== null && value !== undefined).length;
     if (set !== 0 && set !== 3) {
       throw new BadRequestException(
         'fileKey, fileName and fileSizeBytes must be set together (or all cleared)',

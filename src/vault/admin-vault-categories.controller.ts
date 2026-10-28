@@ -27,7 +27,7 @@ import { Role } from '../common/role.enum.js';
 import { VaultCategoriesService } from './vault-categories.service.js';
 import { VaultCategory } from './vault-category.entity.js';
 import {
-  CreateSubGroupDto,
+  CreateGroupDto,
   ReorderSubGroupsDto,
   UpdateGroupDto,
   VaultGroupNodeDto,
@@ -48,7 +48,8 @@ export class AdminVaultCategoriesController {
   @Get()
   @ApiOperation({
     summary: 'The group tree: the five categories, each with its sub-groups',
-    description: 'Use the `id` of any group as a product `categoryId`. Counts include drafts.',
+    description:
+      'Use the `id` of any group as a product `categoryId`. Counts include drafts.',
   })
   @ApiOkResponse({ type: [VaultGroupNodeDto] })
   tree() {
@@ -56,22 +57,30 @@ export class AdminVaultCategoriesController {
   }
 
   @Post()
-  @ApiOperation({ summary: 'Create a sub-group under one of the five categories' })
+  @ApiOperation({
+    summary:
+      'Create a sub-group (send parentId) or a new top-level group (leave parentId out)',
+  })
   @ApiCreatedResponse({ type: VaultCategory })
-  @ApiBadRequestResponse({ description: 'The parent is missing or is itself a sub-group' })
+  @ApiBadRequestResponse({
+    description: 'The parent does not exist or is itself a sub-group',
+  })
   @ApiConflictResponse({ description: 'Slug already in use' })
-  create(@Body() dto: CreateSubGroupDto) {
-    return this.categories.createSubGroup(dto);
+  create(@Body() dto: CreateGroupDto) {
+    return this.categories.createGroup(dto);
   }
 
   @Put('reorder')
   @HttpCode(200)
   @ApiOperation({
     summary: 'Set the order of one category’s sub-groups',
-    description: '`ids` must list every sub-group of that category exactly once, in the new order.',
+    description:
+      '`ids` must list every sub-group of that category exactly once, in the new order.',
   })
   @ApiOkResponse({ type: [VaultGroupNodeDto] })
-  @ApiBadRequestResponse({ description: 'ids do not match that category’s sub-groups' })
+  @ApiBadRequestResponse({
+    description: 'ids do not match that category’s sub-groups',
+  })
   reorder(@Body() dto: ReorderSubGroupsDto) {
     return this.categories.reorder(dto);
   }
@@ -83,7 +92,9 @@ export class AdminVaultCategoriesController {
       'A sub-group can change name, slug, description, order or parent. An official category accepts only `description`.',
   })
   @ApiOkResponse({ type: VaultCategory })
-  @ApiBadRequestResponse({ description: 'Tried to change a locked field of an official category' })
+  @ApiBadRequestResponse({
+    description: 'Tried to change a locked field of an official category',
+  })
   @ApiNotFoundResponse()
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateGroupDto) {
     return this.categories.update(id, dto);
@@ -93,7 +104,9 @@ export class AdminVaultCategoriesController {
   @HttpCode(204)
   @ApiOperation({ summary: 'Delete an empty sub-group' })
   @ApiNoContentResponse()
-  @ApiConflictResponse({ description: 'It is an official category, or it still has products' })
+  @ApiConflictResponse({
+    description: 'It is an official category, or it still has products',
+  })
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.categories.remove(id);
   }

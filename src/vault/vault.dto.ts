@@ -21,12 +21,13 @@ import { SLUG_PATTERN } from '../content/helpers.js';
 import { ECOSYSTEM_DESTINATION_SLUGS, PRODUCT_SYMBOLS } from './constants.js';
 import { SECTION_TYPES, type FaqItem, type SectionType } from './sections.js';
 
-const SLUG_MESSAGE = 'slug must be lowercase letters, numbers and single hyphens';
+const SLUG_MESSAGE =
+  'slug must be lowercase letters, numbers and single hyphens';
 const HTTPS_URL = { protocols: ['https'], require_protocol: true };
 
 // ---------- Groups (categories and sub-groups) ----------
 
-export class CreateSubGroupDto {
+export class CreateGroupDto {
   /** @example Tarot & Oracle */
   @IsString()
   @MinLength(1)
@@ -44,9 +45,13 @@ export class CreateSubGroupDto {
   @MaxLength(500)
   description?: string;
 
-  /** The id of the official category this sub-group sits under (not another sub-group). */
+  /**
+   * The id of the top-level group this sub-group sits under (never another
+   * sub-group). Leave it out to create a new top-level group instead.
+   */
+  @IsOptional()
   @IsInt()
-  parentId: number;
+  parentId?: number;
 
   /** Order among its siblings; goes last when left out. */
   @IsOptional()
@@ -105,9 +110,9 @@ export class VaultGroupNodeDto {
   name: string;
   description: string;
   sortOrder: number;
-  /** Null for the five official top-level categories. */
+  /** Null for top-level groups (the five official categories and any the admin added). */
   parentId: number | null;
-  /** True for the five official categories (never deletable, renamable or movable). */
+  /** True for the five official categories (never deletable, renamable or movable). Groups the admin created are false. */
   isOfficial: boolean;
   /** Products in this group, drafts included. A top-level group also counts its sub-groups. */
   productCount: number;
@@ -271,7 +276,9 @@ export class CreateProductDto {
    * `product-file`. Needs `fileName` and `fileSizeBytes` too. Send null to detach.
    */
   @IsOptional()
-  @Matches(/^private\/[A-Za-z0-9._/-]+$/, { message: 'fileKey must be a key from a product-file upload' })
+  @Matches(/^private\/[A-Za-z0-9._/-]+$/, {
+    message: 'fileKey must be a key from a product-file upload',
+  })
   @MaxLength(300)
   fileKey?: string | null;
 
